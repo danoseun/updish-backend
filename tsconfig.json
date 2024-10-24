@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+      "module": "commonjs",
+      "esModuleInterop": true,
+      "target": "es6",
+      "resolveJsonModule": true,
+      "moduleResolution": "node",
+      "sourceMap": true,
+      "outDir": "dist",
+      "rootDir": ".",
+      "baseUrl": ".",
+      "allowJs": true,
+      "skipLibCheck": true,
+      "paths": {
+        "*": ["node_modules/*", "src/types/*"],
+        "@src/*": ["src/*"]
+      }
+    },
+    "include": ["src/**/*"],
+    "ts-node": {
+      "require": ["tsconfig-paths/register"]
+    },
+    "exclude": ["node_modules"]
+  }
+  
