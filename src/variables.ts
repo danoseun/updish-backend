@@ -12,6 +12,7 @@ const variables = {
     isTesting: environment === 'test',
     isProd: environment === 'production',
     isStaging: environment === 'staging',
+    databaseUrl: process.env.DATABASE_URL,
     backendBaseUrl: process.env.BACKEND_BASE_URL,
     frontendBaseUrl: process.env.FRONTEND_BASE_URL
   },
