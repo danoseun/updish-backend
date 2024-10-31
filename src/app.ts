@@ -6,12 +6,7 @@ import helmet from 'helmet';
 import passport from 'passport';
 
 import { handleErrors as errorMiddleware } from './middleware/error';
-// import {
-//   userRouter,
-//   listingRouter,
-//   categoryRouter,
-//   bookingRouter,
-// } from './routes';
+import { userRouter } from './routes';
 import { logger } from './utilities'
 import variables from './variables';
 
@@ -39,7 +34,7 @@ app.get('/v1/health', (req: Request, res: Response) =>
 );
 
 
-// app.use("/v1", userRouter);
+app.use('/v1', userRouter);
 // app.use("/v1", listingRouter);
 // app.use("/v1", categoryRouter);
 // app.use("/v1", bookingRouter);

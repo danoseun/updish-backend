@@ -1,5 +1,5 @@
 export const sql = {
-    createUser: 'INSERT INTO users (email, password, first_name, last_name, bio) values ($1, $2, $3, $4, $5) returning *',
+    createUser: 'INSERT INTO users (first_name, last_name, email, password, age, state, city, address) values ($1, $2, $3, $4, $5, $6, $7, $8) returning *',
     deactivateUser: 'UPDATE users SET is_active = false, deactivated_at = $1, deletion_scheduled_at = $2 WHERE id = $3 RETURNING email, first_name, phone_number, is_active',
     selectToReactivateUser: 'SELECT is_active, deletion_scheduled_at FROM users WHERE id = $1',
     accountsToBeDeleted: 'SELECT id, email, first_name FROM users WHERE deletion_scheduled_at <= $1',
@@ -9,7 +9,7 @@ export const sql = {
     fetchUserById: 'SELECT * FROM users WHERE id = $1',
     updateIsEmailVerified: 'UPDATE users SET is_email_verified = $1, updated_at = NOW() WHERE id = $2 returning *',
     updateIsPhoneNumberVerified: 'UPDATE users SET is_phone_number_verified = $1, updated_at = NOW() WHERE id = $2 returning *',
-    findPhoneNumber: 'SELECT id, email, phone_number FROM users WHERE phone_number = $1',
+    findPhoneNumber: 'SELECT phone_number FROM users WHERE phone_number = $1',
     updateUserPhoneNumber: 'UPDATE users SET phone_number = $1, is_phone_number_verified = $2, updated_at = NOW() WHERE id = $3 returning *',
     updateUserPassword: 'UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2 returning *',
     updateUserEmail: 'UPDATE users SET email = $1, updated_at = NOW() WHERE id = $2 returning *',
