@@ -1,6 +1,6 @@
-import dotenv from 'dotenv';
-import { RequestHandler } from 'express';
-import HttpStatus from 'http-status-codes';
+import dotenv from "dotenv";
+import { RequestHandler } from "express";
+import HttpStatus from "http-status-codes";
 import {
   createUser,
   updateIsEmailVerified,
@@ -15,25 +15,29 @@ import {
   updateUserEmail,
   deactivateUser,
   selectToReactivateUser,
-  reactivateUser
-} from '../repository/user';
-import { BadRequestError, ConflictError, ResourceNotFoundError } from '../errors';
-import type { User, User_Image } from '../interfaces';
-import { SMS_STATUS } from '../constants';
+  reactivateUser,
+} from "../repository/user";
+import {
+  BadRequestError,
+  ConflictError,
+  ResourceNotFoundError,
+} from "../errors";
+import type { User, User_Image } from "../interfaces";
+import { SMS_STATUS } from "../constants";
 import {
   hashPassword,
   comparePassword,
   respond,
   JWT,
-//   upload,
-//   removeFolder,
+  //   upload,
+  //   removeFolder,
   sendOtpToUser,
   verifyOtp,
   logger,
-//   deleteImage,
-//   nanoid,
-//   sendSmsToUser
-} from '../utilities';
+  //   deleteImage,
+  //   nanoid,
+  //   sendSmsToUser
+} from "../utilities";
 // import {
 //   accountVerificationTemplate,
 //   accountDeactivationTemplate,
@@ -44,11 +48,9 @@ import {
 //   getForgotPasswordUrl
 // } from '../services/email';
 
-
 dotenv.config();
 
 export const UserController = {
-
   sendOtpToPhoneNumber: (): RequestHandler => async (req, res, next) => {
     const { phone_number } = req.body;
     const params = [phone_number];
@@ -64,7 +66,11 @@ export const UserController = {
       if (smsSent === SMS_STATUS.PENDING) {
         return respond(res, 'sms was successfully sent', HttpStatus.OK);
       } else {
-        return respond(res, 'there was a problem sending the sms', HttpStatus.EXPECTATION_FAILED);
+        return respond(
+          res,
+          'there was a problem sending the sms',
+          HttpStatus.EXPECTATION_FAILED,
+        );
       }
     } catch (error) {
       next(error);
@@ -73,14 +79,21 @@ export const UserController = {
 
   verifyUserPhoneNumber: (): RequestHandler => async (req, res, next) => {
     const { phone_number, otp } = req.body;
-    
+
     try {
       const smsResult = await verifyOtp(phone_number, otp);
       if (smsResult === SMS_STATUS.APPROVED) {
-        
-        return respond(res, `${phone_number} verified successfully`, HttpStatus.OK);
+        return respond(
+          res,
+          `${phone_number} verified successfully`,
+          HttpStatus.OK,
+        );
       } else {
-        return respond(res, 'there was a problem verifying the phone number', HttpStatus.EXPECTATION_FAILED);
+        return respond(
+          res,
+          'there was a problem verifying the phone number',
+          HttpStatus.EXPECTATION_FAILED,
+        );
       }
     } catch (error) {
       next(error);
@@ -88,39 +101,27 @@ export const UserController = {
   },
 
   createUserWithPhoneNumber: (): RequestHandler => async (req, res, next) => {
-    let params = [req.body.first_name, req.body.last_name, req.body.email, req.body.password, req.body.age, req.body.state, req.body.city, req.body.address];
-    // let params = [req.body.email, req.body.password, req.body.firstname, req.body.lastname, req.body.bio];
+    let params = [
+      req.body.first_name,
+      req.body.last_name,
+      req.body.phone_number,
+      req.body.email,
+      req.body.password,
+      req.body.age,
+      req.body.state,
+      req.body.city,
+      req.body.address,
+    ];
 
-    // try {
-    //   const existingUser = await findUserByEmail([params[0]] as Partial<User>);
-
-    //   if (existingUser) {
-    //     throw new ConflictError('User already exists');
-    //   }
-    //   let user: User;
-
-    //   params[1] = await hashPassword(req.body.password);
-    //   user = await createUser(params as Partial<User>);
-    //   const accessToken = JWT.encode({ id: user.id });
-    //   user.accessToken = accessToken;
-
-    //   //send verification email to user
-    //   const token = makeAccountVerificationToken(user);
-    //   const url = getActivationLinkURL(token);
-    //   const emailTemplate = accountVerificationTemplate(user, url);
-    //   transporter(emailTemplate, res);
-    //   respond<User>(res, user, HttpStatus.CREATED);
-    //   return;
-    // } catch (error) {
-    //   next(error);
-    // }
     try {
-      const existingUser = await findUserByEmail([req.body.email] as Partial<User>);
-      if(existingUser){
+      const existingUser = await findUserByEmail([
+        req.body.email,
+      ] as Partial<User>);
+      if (existingUser) {
         throw new ConflictError('email already exists');
       }
       let user: User;
-      params[3] = await hashPassword(req.body.password);
+      params[4] = await hashPassword(req.body.password);
       user = await createUser(params as Partial<User>);
 
       respond<User>(res, user, HttpStatus.CREATED);
@@ -154,20 +155,26 @@ export const UserController = {
     try {
       const existingUser = await findUserByEmail([params[0]] as Partial<User>);
       if (!existingUser) {
-        throw new ResourceNotFoundError('You may want to signup with this email');
+        throw new ResourceNotFoundError(
+          'You may want to signup with this email',
+        );
       }
       const compare = await comparePassword(params[1], existingUser.password);
       if (!compare) {
-        throw new BadRequestError('Kindly check the password');
+        throw new BadRequestError("Kindly check the password");
       } else {
         accessToken = JWT.encode({ id: existingUser.id });
       }
       delete existingUser.password;
-      const foundUserImage = await fetchUserImage([existingUser.id] as Partial<User_Image>);
-      if (foundUserImage) {
-        existingUser.image_url = foundUserImage?.image_url;
-      }
-      return respond(res, { accessToken, userData: existingUser }, HttpStatus.OK);
+      // const foundUserImage = await fetchUserImage([existingUser.id] as Partial<User_Image>);
+      // if (foundUserImage) {
+      //   existingUser.image_url = foundUserImage?.image_url;
+      // }
+      return respond(
+        res,
+        { accessToken, userData: existingUser },
+        HttpStatus.OK,
+      );
     } catch (error) {
       next(error);
     }
@@ -189,7 +196,6 @@ export const UserController = {
     //    * then upload a fresh image.
     //    */
     //   const foundUserImage = await fetchUserImage([res.locals.user.id] as Partial<User_Image>);
-
     //   if (foundUserImage?.public_id) {
     //     const deletedImage = await deleteImage(foundUserImage.public_id);
     //     if (deletedImage) {
@@ -231,73 +237,124 @@ export const UserController = {
         } else {
           // @ts-ignore
           const { email, firstName, lastName } = req.user;
-          const params = [email, null, firstName, lastName, null];
-          const newUser = await createUser(params as Partial<User>);
-          const accessToken = JWT.encode({ id: newUser.id });
-          newUser.accessToken = accessToken;
-          return respond<User>(res, newUser, HttpStatus.OK);
+          // const params = [
+          //   firstName,
+          //   lastName,
+          //   null,
+          //   email,
+          //   null,
+          //   null,
+          //   null,
+          //   null,
+          //   null,
+          // ];
+          // const newUser = await createUser(params as Partial<User>);
+          // const accessToken = JWT.encode({ id: newUser.id });
+          // newUser.accessToken = accessToken;
+          return respond(res, { email, firstName, lastName }, HttpStatus.OK);
         }
       } else {
-        return respond(res, 'error sign in with google auth', HttpStatus.BAD_REQUEST);
+        return respond(
+          res,
+          "error sign in with google auth",
+          HttpStatus.BAD_REQUEST,
+        );
       }
     } catch (error) {
-      console.log('[GOOGLE SOCIAL AUTH ERROR]', error);
-      logger.error('[GOOGLE SOCIAL AUTH ERROR]', error);
+      console.log("[GOOGLE SOCIAL AUTH ERROR]", error);
+      logger.error("[GOOGLE SOCIAL AUTH ERROR]", error);
       next(error);
     }
   },
+
+  createUserWithGoogleAuth: (): RequestHandler => async (req, res, next) => {
+    let params = [
+      req.body.first_name,
+      req.body.last_name,
+      req.body.phone_number,
+      req.body.email,
+      req.body.password = null,
+      req.body.age,
+      req.body.state,
+      req.body.city,
+      req.body.address,
+    ];
+
+    try {
+      const existingUser = await findUserByEmail([
+        req.body.email,
+      ] as Partial<User>);
+      if (existingUser) {
+        throw new ConflictError('email already exists');
+      }
+      let user: User;
+      user = await createUser(params as Partial<User>);
+
+      respond<User>(res, user, HttpStatus.CREATED);
+    } catch (error) {
+      next(error);
+    }
+  },
+
 
   /**
    * if email is not returned, re-route user to traditional login
    */
   // This function manages the facebook authentication from the callback route
-  handleFacebookAuth: (): RequestHandler => async (req, res, next) => {
-    try {
-      if (req.user) {
-        // @ts-ignore
-        const foundUser = await findUserByEmail([req.user.email] as Partial<User>);
-        if (foundUser) {
-          const token = JWT.encode({ id: foundUser.id });
-          foundUser.accessToken = token;
-          delete foundUser.password;
-          return respond<User>(res, foundUser, HttpStatus.OK);
-        } else {
-          // @ts-ignore
-          const { email, firstName, lastName } = req.user;
-          const params = [email, null, firstName, lastName, null];
-          const newUser = await createUser(params as Partial<User>);
-          const accessToken = JWT.encode({ id: newUser.id });
-          newUser.accessToken = accessToken;
-          return respond<User>(res, newUser, HttpStatus.OK);
-        }
-      } else {
-        return respond(res, 'error sign in with facebook auth', HttpStatus.BAD_REQUEST);
-      }
-    } catch (error) {
-      console.log('[FACEBOOK SOCIAL AUTH ERROR]', error);
-      logger.error('[FACEBOOK SOCIAL AUTH ERROR]', error);
-      next(error);
-    }
-  },
+  // handleFacebookAuth: (): RequestHandler => async (req, res, next) => {
+  //   try {
+  //     if (req.user) {
+  //       // @ts-ignore
+  //       const foundUser = await findUserByEmail([req.user.email] as Partial<User>);
+  //       if (foundUser) {
+  //         const token = JWT.encode({ id: foundUser.id });
+  //         foundUser.accessToken = token;
+  //         delete foundUser.password;
+  //         return respond<User>(res, foundUser, HttpStatus.OK);
+  //       } else {
+  //         // @ts-ignore
+  //         const { email, firstName, lastName } = req.user;
+  //         const params = [email, null, firstName, lastName, null];
+  //         const newUser = await createUser(params as Partial<User>);
+  //         const accessToken = JWT.encode({ id: newUser.id });
+  //         newUser.accessToken = accessToken;
+  //         return respond<User>(res, newUser, HttpStatus.OK);
+  //       }
+  //     } else {
+  //       return respond(res, 'error sign in with facebook auth', HttpStatus.BAD_REQUEST);
+  //     }
+  //   } catch (error) {
+  //     console.log('[FACEBOOK SOCIAL AUTH ERROR]', error);
+  //     logger.error('[FACEBOOK SOCIAL AUTH ERROR]', error);
+  //     next(error);
+  //   }
+  // },
 
   forgotPassword: (): RequestHandler => async (req, res, next) => {
-    // const { email } = req.body;
-    // try {
-    //   const foundUser = await findUserByEmail([email] as Partial<User>);
-    //   if (!foundUser) {
-    //     throw new BadRequestError('the number you are calling is not available');
-    //   } else {
-    //     // send email
-    //     const token = makeAccountVerificationToken(foundUser);
-    //     const url = getForgotPasswordUrl(token);
-    //     const emailTemplate = accountVerificationTemplate(foundUser, url);
-    //     transporter(emailTemplate, res);
-    //     delete foundUser.password;
-    //     respond<User>(res, foundUser, HttpStatus.OK);
-    //   }
-    // } catch (error) {
-    //   next(error);
-    // }
+    const { email } = req.body;
+    try {
+      const foundUser = await findUserByEmail([email] as Partial<User>);
+      if (!foundUser) {
+        throw new BadRequestError(
+          "the number you are calling is not available",
+        );
+      } else {
+        // send otp
+        const smsSent = await sendOtpToUser(foundUser.phone_number);
+
+        if (smsSent === SMS_STATUS.PENDING) {
+          return respond(res, "sms was successfully sent", HttpStatus.OK);
+        } else {
+          return respond(
+            res,
+            "there was a problem sending the sms",
+            HttpStatus.EXPECTATION_FAILED,
+          );
+        }
+      }
+    } catch (error) {
+      next(error);
+    }
   },
 
   acceptNewPassword: (): RequestHandler => async (req, res, next) => {
@@ -322,16 +379,12 @@ export const UserController = {
   updatePassword: (): RequestHandler => async (req, res, next) => {
     // const { oldPassword, newPassword } = req.body;
     // const userId = res.locals.user.id;
-
     // try {
     //   const user = await findUserById([userId] as Partial<User>);
-
     //   if (!user) {
     //     throw new BadRequestError('no user was found for this account');
     //   }
-
     //   const compare = await comparePassword(oldPassword, user.password);
-
     //   if (!compare) {
     //     throw new BadRequestError('old password is incorrect');
     //   }
@@ -365,8 +418,6 @@ export const UserController = {
     //   next(error);
     // }
   },
-
-  
 
   // deactivateAccount: (): RequestHandler => async (req, res, next) => {
   //   const userId = res.locals.user.id;

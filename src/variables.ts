@@ -35,7 +35,11 @@ const variables = {
       accountSid: process.env.TWILIO_ACCOUNT_SID,
       authToken: process.env.TWILIO_AUTH_TOKEN,
       from: process.env.FROM
-    }
+    },
+    google: {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET
+    },
   },
   
 };

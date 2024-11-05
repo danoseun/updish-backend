@@ -13,6 +13,8 @@ const userTable = `DROP TABLE IF EXISTS users CASCADE;
             state CHARACTER VARYING(255),
             city CHARACTER VARYING(255),
             address TEXT,
+            latitude DECIMAL(9, 6),
+            longitude DECIMAL(9, 6),
             is_email_verified BOOLEAN,
             is_phone_number_verified BOOLEAN,
             identity_verified BOOLEAN,

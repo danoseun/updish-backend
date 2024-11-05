@@ -2,7 +2,7 @@ import { Router } from 'express';
 import passport from 'passport';
 import fileUpload from 'express-fileupload';
 
-import { checkPhoneNumberSchema, verifyUserPhoneNumberSchema } from '../validations/user';
+import { checkPhoneNumberSchema, verifyUserPhoneNumberSchema, loginUserSchema, createUserWithPhoneNumberSchema, createUserWithGoogleAuthSchema } from '../validations/user';
 
 import { UserController } from '../controllers/user';
 // import { authenticate } from '../middleware/authenticate';
@@ -10,10 +10,11 @@ import { UserController } from '../controllers/user';
 export const userRouter = Router();
 
 // userRouter.post('/auth/signup', createUserSchema, UserController.createUser());
-// userRouter.post('/auth/login', loginUserSchema, UserController.loginUser());
+userRouter.post('/auth/login', loginUserSchema, UserController.loginUser());
 // userRouter.patch('/auth/verify/:token', verfiyUserEmailSchema, UserController.verifyUserEmail());
-userRouter.patch('/auth/send/phone', checkPhoneNumberSchema, UserController.sendOtpToPhoneNumber());
-userRouter.patch('/auth/phone/verify', verifyUserPhoneNumberSchema, UserController.verifyUserPhoneNumber());
+userRouter.post('/auth/send/phone', checkPhoneNumberSchema, UserController.sendOtpToPhoneNumber());
+userRouter.post('/auth/phone/verify', verifyUserPhoneNumberSchema, UserController.verifyUserPhoneNumber());
+userRouter.post('/signup-with-phone', createUserWithPhoneNumberSchema, UserController.createUserWithPhoneNumber());
 
 // handles social media authentication
 
@@ -22,6 +23,7 @@ userRouter.get('/auth/google', passport.authenticate('google', { scope: ['profil
 
 // Gooogle login callback that manages the returned user object
 userRouter.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: 'https://milesrental.netlify.app/login' }), UserController.handleGoogleAuth());
+userRouter.post('/signup-with-google', createUserWithGoogleAuthSchema, UserController.createUserWithGoogleAuth());
 
 //userRouter.get('/auth/facebook', passport.authenticate('facebook'));
 
