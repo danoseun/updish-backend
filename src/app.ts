@@ -1,4 +1,7 @@
 import express, { Request, Response } from 'express';
+import session from 'express-session';
+let RedisStore = require('connect-redis')(session);
+import { createClient } from 'redis';
 import morgan from 'morgan';
 import cors from 'cors';
 import compression from 'compression';
@@ -10,6 +13,9 @@ import { userRouter } from './routes';
 import { logger } from './utilities'
 import variables from './variables';
 
+// Require Passport midleware - without this your app wont work
+require('./middleware/passport');
+
 
 const app = express();
 
@@ -19,6 +25,24 @@ app.options('*', cors());
 app.use(helmet());
 app.use(compression());
 app.use(morgan('dev'));
+
+
+// Initialize Redis client.
+let redisClient = createClient({
+  url: variables.services.redisUrl
+});
+
+//Connection
+redisClient.on('connect', () => {
+  console.log('Redis client connected');
+  logger.info('Redis client connected');
+});
+
+//Error
+redisClient.on('error', (err) => {
+  console.log('Something went wrong ' + err);
+  logger.error('Something went wrong ' + err);
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

@@ -1,31 +1,28 @@
-image: node:16
-
-stages:
-  - build
-  - deploy
-
-cache:
-  paths:
-    - node_modules/
+image: node:latest
 
 before_script:
-  - npm install
+    - apt-get update -qy
+    - apt-get install -y ruby-dev
+    - gem install dpl
 
-build:
-  stage: build
-  script:
-    - npm run build    # Build the TypeScript project
-    # - npm run migrate
-  artifacts:
-    paths:
-      - dist            # Save the build directory for deployment
+stages:
+    - staging
+    - production
 
-deploy_to_heroku:
-  stage: deploy
-  script:
-    - curl https://cli-assets.heroku.com/install.sh | sh  # Install Heroku CLI
-    - echo "$HEROKU_API_KEY" | heroku auth:token         # Authenticate Heroku
-    - heroku git:remote -a updish-staging                 # Replace with your Heroku app name
-    - git push heroku HEAD:main                          # Push to Heroku
-  only:
-    - main                                               # Deploy only from the main branch
+staging:
+    # type: deploy
+    stage: staging
+    image: ruby:latest
+    script:
+        - dpl --provider=heroku --app=$HEROKU_APP_STAGING --api-key=$HEROKU_API_KEY
+    only:
+        - staging
+
+production:
+    # type: deploy
+    stage: production
+    image: ruby:latest
+    script:
+        - dpl --provider=heroku --app=$HEROKU_APP_PRODUCTION --api-key=$HEROKU_API_KEY
+    only:
+        - master
