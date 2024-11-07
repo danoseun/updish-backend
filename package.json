@@ -8,7 +8,7 @@
     "migrate:dev": "ts-node ./src/database/migrations",
     "migrate": "node ./dist/src/database/migrations",
     "build": "tsc",
-    "popostinstall": "npm run build && npm run migrate",
+    "postinstall": "npm run build && npm run migrate",
     "test": "echo \"No tests yet...\"",
     "clean": "rimraf dist",
     "start": "node ./dist/src/server.js"
