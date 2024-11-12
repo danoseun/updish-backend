@@ -1,6 +1,6 @@
-import dotenv from "dotenv";
-import { RequestHandler } from "express";
-import HttpStatus from "http-status-codes";
+import dotenv from 'dotenv';
+import { RequestHandler } from 'express';
+import HttpStatus from 'http-status-codes';
 import {
   createUser,
   updateIsEmailVerified,
@@ -15,14 +15,15 @@ import {
   updateUserEmail,
   deactivateUser,
   selectToReactivateUser,
-  reactivateUser,
-} from "../repository/user";
+  reactivateUser
+} from '../repository/user';
+import { createKYC, findUserKYC } from '../repository/kyc';
 import {
   BadRequestError,
   ConflictError,
   ResourceNotFoundError,
 } from "../errors";
-import type { User, User_Image } from "../interfaces";
+import type { KYC, User, User_Image } from '../interfaces';
 import { SMS_STATUS } from "../constants";
 import {
   hashPassword,
@@ -58,17 +59,17 @@ export const UserController = {
       const foundUser = await findPhoneNumber(params as Partial<User>);
 
       if (foundUser) {
-        throw new ConflictError('phone number is in use');
+        throw new ConflictError("phone number is in use");
       }
 
       const smsSent = await sendOtpToUser(phone_number);
 
       if (smsSent === SMS_STATUS.PENDING) {
-        return respond(res, 'sms was successfully sent', HttpStatus.OK);
+        return respond(res, "sms was successfully sent", HttpStatus.OK);
       } else {
         return respond(
           res,
-          'there was a problem sending the sms',
+          "there was a problem sending the sms",
           HttpStatus.EXPECTATION_FAILED,
         );
       }
@@ -91,10 +92,31 @@ export const UserController = {
       } else {
         return respond(
           res,
-          'there was a problem verifying the phone number',
+          "there was a problem verifying the phone number",
           HttpStatus.EXPECTATION_FAILED,
         );
       }
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  saveKYCDetails: (): RequestHandler => async (req, res, next) => {
+    const userId = res.locals.user.id;
+    const { sex, health_goals, dietary_preferences, food_allergies, health_concerns } = req.body;
+    try {
+      const kycDetails = await createKYC([userId, sex, health_goals, dietary_preferences, food_allergies, health_concerns] as Partial<KYC>);
+      return respond(res, kycDetails, HttpStatus.CREATED);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  foundKYCDetails: (): RequestHandler => async (req, res, next) => {
+    const userId = res.locals.user.id;
+    try {
+      const kycDetails = await findUserKYC([userId] as Partial<KYC>);
+      return respond(res, kycDetails, HttpStatus.OK);
     } catch (error) {
       next(error);
     }
@@ -118,7 +140,7 @@ export const UserController = {
         req.body.email,
       ] as Partial<User>);
       if (existingUser) {
-        throw new ConflictError('email already exists');
+        throw new ConflictError("email already exists");
       }
       let user: User;
       params[4] = await hashPassword(req.body.password);
@@ -155,9 +177,7 @@ export const UserController = {
     try {
       const existingUser = await findUserByEmail([params[0]] as Partial<User>);
       if (!existingUser) {
-        throw new ResourceNotFoundError(
-          'You may want to signup with this email',
-        );
+        throw new ResourceNotFoundError("You may want to signup with this email");
       }
       const compare = await comparePassword(params[1], existingUser.password);
       if (!compare) {
@@ -273,7 +293,7 @@ export const UserController = {
       req.body.last_name,
       req.body.phone_number,
       req.body.email,
-      req.body.password = null,
+      (req.body.password = null),
       req.body.age,
       req.body.state,
       req.body.city,
@@ -285,7 +305,7 @@ export const UserController = {
         req.body.email,
       ] as Partial<User>);
       if (existingUser) {
-        throw new ConflictError('email already exists');
+        throw new ConflictError("email already exists");
       }
       let user: User;
       user = await createUser(params as Partial<User>);
@@ -295,7 +315,6 @@ export const UserController = {
       next(error);
     }
   },
-
 
   /**
    * if email is not returned, re-route user to traditional login
@@ -340,7 +359,7 @@ export const UserController = {
         );
       } else {
         // send otp
-        const smsSent = await sendOtpToUser(foundUser.phone_number);
+        const smsSent = await sendOtpToUser(foundUser?.phone_number);
 
         if (smsSent === SMS_STATUS.PENDING) {
           return respond(res, "sms was successfully sent", HttpStatus.OK);
@@ -358,22 +377,28 @@ export const UserController = {
   },
 
   acceptNewPassword: (): RequestHandler => async (req, res, next) => {
-    // const { token } = req.query;
-    // const { newPassword } = req.body;
-    // try {
-    //   const decodedUser = JWT.decode(token as string);
-    //   console.log('CdecodeUser', decodedUser);
-    //   const user = await findUserById([decodedUser.id] as Partial<User>);
-    //   if (!user) {
-    //     throw new BadRequestError('Something terrible happened');
-    //   }
-    //   const newPass = await hashPassword(newPassword);
-    //   const updatedUser = await updateUserPassword([newPass, user.id] as Partial<User>);
-    //   delete updatedUser.password;
-    //   return respond(res, { message: 'Password updated successfully', updatedUser }, HttpStatus.OK);
-    // } catch (error) {
-    //   next(error);
-    // }
+    const { email, newPassword } = req.body;
+    let updatedUser: User;
+    try {
+      const foundUser = await findUserByEmail([email] as Partial<User>);
+      if (!foundUser) {
+        throw new BadRequestError("account does not exist");
+      } else {
+        const newPass = await hashPassword(newPassword);
+        updatedUser = await updateUserPassword([
+          newPass,
+          foundUser.id,
+        ] as Partial<User>);
+        delete updatedUser.password;
+      }
+      return respond(
+        res,
+        { message: "Password updated successfully", updatedUser },
+        HttpStatus.OK,
+      );
+    } catch (error) {
+      next(error);
+    }
   },
 
   updatePassword: (): RequestHandler => async (req, res, next) => {

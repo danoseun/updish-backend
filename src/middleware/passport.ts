@@ -47,7 +47,7 @@ passport.deserializeUser(function (id: any, done) {
 });
 
 const googleCallbackUrl =
-  process.env.NODE_ENV === 'test'
+  process.env.NODE_ENV === 'development'
     ? 'http://127.0.0.1:2145/v1/auth/google/callback'
     : `${variables.app.backendBaseUrl}/v1/auth/google/callback`;
 

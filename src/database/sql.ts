@@ -16,6 +16,8 @@ export const sql = {
     updateUserEmail: 'UPDATE users SET email = $1, updated_at = NOW() WHERE id = $2 returning *',
     fetchUserImage: 'SELECT * FROM user_images WHERE user_id = $1',
     uploadUserImage: 'INSERT INTO user_images (user_id, public_id, image_url) values ($1, $2, $3) returning *',
-    deleteUserImage: 'DELETE FROM user_images WHERE public_id = $1'
+    deleteUserImage: 'DELETE FROM user_images WHERE public_id = $1',
+    createKYC: 'INSERT INTO kycs (user_id, sex, health_goals, dietary_preferences, food_allergies, health_concerns) values($1, $2, $3, $4, $5, $6) returning *',
+    findKYC: 'SELECT * FROM kycs WHERE user_id = $1'
   };
   

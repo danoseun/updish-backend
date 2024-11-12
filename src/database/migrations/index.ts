@@ -1,4 +1,5 @@
 import { createUserTable } from '../models';
+import { createKycTable } from '../models';
 //import { seedUsers } from '../seeders';
 
 import { logger } from '../../utilities';

@@ -2,10 +2,10 @@ import { Router } from 'express';
 import passport from 'passport';
 import fileUpload from 'express-fileupload';
 
-import { checkPhoneNumberSchema, verifyUserPhoneNumberSchema, loginUserSchema, createUserWithPhoneNumberSchema, createUserWithGoogleAuthSchema } from '../validations/user';
+import { checkPhoneNumberSchema, verifyUserPhoneNumberSchema, loginUserSchema, createUserWithPhoneNumberSchema, createUserWithGoogleAuthSchema, forgotPasswordSchema, acceptNewPasswordSchema, createKYCSchema, fetchKYCSchema } from '../validations/user';
 
 import { UserController } from '../controllers/user';
-// import { authenticate } from '../middleware/authenticate';
+import { authenticate } from '../middleware/authenticate';
 
 export const userRouter = Router();
 
@@ -15,6 +15,8 @@ userRouter.post('/auth/login', loginUserSchema, UserController.loginUser());
 userRouter.post('/auth/send/phone', checkPhoneNumberSchema, UserController.sendOtpToPhoneNumber());
 userRouter.post('/auth/phone/verify', verifyUserPhoneNumberSchema, UserController.verifyUserPhoneNumber());
 userRouter.post('/signup-with-phone', createUserWithPhoneNumberSchema, UserController.createUserWithPhoneNumber());
+userRouter.post('/kyc', createKYCSchema, authenticate(), UserController.saveKYCDetails());
+userRouter.get('/kyc', authenticate(), UserController.foundKYCDetails());
 
 // handles social media authentication
 
@@ -32,9 +34,9 @@ userRouter.post('/signup-with-google', createUserWithGoogleAuthSchema, UserContr
 
 // userRouter.patch('/uploads', authenticate(), fileUpload({ useTempFiles: true, limits: { fileSize: 10 * 1024 * 1024 } }), UserController.uploadPhoto());
 
-// userRouter.patch('/send-forgot-password', forgotPasswordSchema, UserController.forgotPassword());
+userRouter.post('/send-forgot-password', forgotPasswordSchema, UserController.forgotPassword());
 
-// userRouter.patch('/forgot-password', acceptNewPasswordSchema, UserController.acceptNewPassword());
+userRouter.patch('/forgot-password', acceptNewPasswordSchema, UserController.acceptNewPassword());
 
 // userRouter.patch('/update-password', authenticate(), updatePasswordSchema, UserController.updatePassword());
 

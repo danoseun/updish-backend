@@ -5,7 +5,7 @@ dotenv.config();
 
 let connection: PoolConfig;
 
-if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'production') {
+if (process.env.NODE_ENV === 'staging' || process.env.NODE_ENV === 'production') {
   connection = {
     connectionString: process.env.DATABASE_URL,
     // ssl: {
