@@ -90,17 +90,22 @@ export const forgotPasswordSchema = celebrate({
 export const acceptNewPasswordSchema = celebrate({
   [Segments.BODY]: Joi.object().keys({
     email: Joi.string().trim().required(),
-    newPassword: Joi.string().trim().required(),
+    newPassword: Joi.string().trim().required()
   }),
 });
 
 export const createKYCSchema = celebrate({
   [Segments.BODY]: Joi.object().keys({
+    userId: Joi.number(),
     sex: Joi.string().trim().required(),
     health_goals: Joi.string().trim().required(),
     dietary_preferences: Joi.string().trim().required(),
-    food_allergies: Joi.array().items(Joi.string()).required(),
-    health_concerns: Joi.array().items(Joi.string()).required(),
+    food_allergies: Joi.array()
+      .items(Joi.string().trim().min(1).required())
+      .required(),
+    health_concerns: Joi.array()
+      .items(Joi.string().trim().min(1).required())
+      .required()
   }),
 });
 

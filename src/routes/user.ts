@@ -14,8 +14,8 @@ userRouter.post('/auth/login', loginUserSchema, UserController.loginUser());
 // userRouter.patch('/auth/verify/:token', verfiyUserEmailSchema, UserController.verifyUserEmail());
 userRouter.post('/auth/send/phone', checkPhoneNumberSchema, UserController.sendOtpToPhoneNumber());
 userRouter.post('/auth/phone/verify', verifyUserPhoneNumberSchema, UserController.verifyUserPhoneNumber());
-userRouter.post('/signup-with-phone', createUserWithPhoneNumberSchema, UserController.createUserWithPhoneNumber());
-userRouter.post('/kyc', createKYCSchema, authenticate(), UserController.saveKYCDetails());
+userRouter.post('/auth/signup-with-phone', createUserWithPhoneNumberSchema, UserController.createUserWithPhoneNumber());
+userRouter.post('/kycs', createKYCSchema, UserController.saveKYCDetails());
 userRouter.get('/kyc', authenticate(), UserController.foundKYCDetails());
 
 // handles social media authentication
@@ -36,7 +36,7 @@ userRouter.post('/signup-with-google', createUserWithGoogleAuthSchema, UserContr
 
 userRouter.post('/send-forgot-password', forgotPasswordSchema, UserController.forgotPassword());
 
-userRouter.patch('/forgot-password', acceptNewPasswordSchema, UserController.acceptNewPassword());
+userRouter.patch('/accept-new-password', acceptNewPasswordSchema, UserController.acceptNewPassword());
 
 // userRouter.patch('/update-password', authenticate(), updatePasswordSchema, UserController.updatePassword());
 

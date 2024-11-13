@@ -1,6 +1,6 @@
-import dotenv from 'dotenv';
-import { RequestHandler } from 'express';
-import HttpStatus from 'http-status-codes';
+import dotenv from "dotenv";
+import { RequestHandler } from "express";
+import HttpStatus from "http-status-codes";
 import {
   createUser,
   updateIsEmailVerified,
@@ -15,15 +15,15 @@ import {
   updateUserEmail,
   deactivateUser,
   selectToReactivateUser,
-  reactivateUser
-} from '../repository/user';
-import { createKYC, findUserKYC } from '../repository/kyc';
+  reactivateUser,
+} from "../repository/user";
+import { createKYC, findUserKYC } from "../repository/kyc";
 import {
   BadRequestError,
   ConflictError,
   ResourceNotFoundError,
 } from "../errors";
-import type { KYC, User, User_Image } from '../interfaces';
+import type { KYC, User, User_Image } from "../interfaces";
 import { SMS_STATUS } from "../constants";
 import {
   hashPassword,
@@ -102,10 +102,32 @@ export const UserController = {
   },
 
   saveKYCDetails: (): RequestHandler => async (req, res, next) => {
-    const userId = res.locals.user.id;
-    const { sex, health_goals, dietary_preferences, food_allergies, health_concerns } = req.body;
+    // const userId = res.locals.user.id;
+    const {
+      userId,
+      sex,
+      health_goals,
+      dietary_preferences,
+      food_allergies,
+      health_concerns,
+    } = req.body;
     try {
-      const kycDetails = await createKYC([userId, sex, health_goals, dietary_preferences, food_allergies, health_concerns] as Partial<KYC>);
+      const user = await findUserById([userId] as Partial<User>);
+      if (!user) {
+        return respond(
+          res,
+          `user with id of ${userId} does not exist`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      const kycDetails = await createKYC([
+        userId,
+        sex,
+        health_goals,
+        dietary_preferences,
+        food_allergies,
+        health_concerns,
+      ] as Partial<KYC>);
       return respond(res, kycDetails, HttpStatus.CREATED);
     } catch (error) {
       next(error);
@@ -177,7 +199,9 @@ export const UserController = {
     try {
       const existingUser = await findUserByEmail([params[0]] as Partial<User>);
       if (!existingUser) {
-        throw new ResourceNotFoundError("You may want to signup with this email");
+        throw new ResourceNotFoundError(
+          "You may want to signup with this email",
+        );
       }
       const compare = await comparePassword(params[1], existingUser.password);
       if (!compare) {
