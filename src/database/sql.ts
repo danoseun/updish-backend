@@ -18,6 +18,10 @@ export const sql = {
     uploadUserImage: 'INSERT INTO user_images (user_id, public_id, image_url) values ($1, $2, $3) returning *',
     deleteUserImage: 'DELETE FROM user_images WHERE public_id = $1',
     createKYC: 'INSERT INTO kycs (user_id, sex, health_goals, dietary_preferences, food_allergies, health_concerns) values($1, $2, $3, $4, $5, $6) returning *',
-    findKYC: 'SELECT * FROM kycs WHERE user_id = $1'
+    findKYC: 'SELECT * FROM kycs WHERE user_id = $1',
+    createItem: 'INSERT INTO items (admin_id, item_name, uom, allergies, class_of_food, calories_per_uom, parent_item) values ($1, $2, $3, $4, $5, $6, $7) returning *',
+    allItems: 'SELECT * FROM items',
+    findItem: 'SELECT * FROM items WHERE id = $1',
+    findItemByName: 'SELECT * FROM categories WHERE name = $1'
   };
   

@@ -541,3 +541,8 @@ export const UserController = {
   //   }
   // }
 };
+
+/**
+ * user should not be able to see food items
+ * with allergies they have chosen
+ */
