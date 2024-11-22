@@ -10,7 +10,6 @@ const kycTable = `DROP TABLE IF EXISTS kycs CASCADE;
             dietary_preferences TEXT,
             food_allergies CHARACTER VARYING(255)[],
             health_concerns CHARACTER VARYING(255)[],
-            is_active BOOLEAN DEAFULT FALSE
             created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
         )`;

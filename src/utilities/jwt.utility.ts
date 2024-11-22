@@ -8,7 +8,7 @@ export class JWT {
 
   public static encode(payload: Partial<User>, options?: Partial<jwt.SignOptions>): string {
     try {
-      const token = jwt.sign(payload, this.secret, { expiresIn: variables.auth.jwtExpiryTime || '24h', ...options });
+      const token = jwt.sign(payload, this.secret, { expiresIn: variables.auth.jwtExpiryTime || '30d', ...options });
       return token;
     } catch (error) {
       throw error;

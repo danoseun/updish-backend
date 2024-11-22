@@ -1,3 +1,5 @@
+import { createParentItemTable } from "./models";
+
 export const sql = {
     createUser: 'INSERT INTO users (first_name, last_name, phone_number, email, password, age, state, city, address) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning *',
     createUserWithGoogleAuth: 'INSERT INTO users (first)',
@@ -19,9 +21,23 @@ export const sql = {
     deleteUserImage: 'DELETE FROM user_images WHERE public_id = $1',
     createKYC: 'INSERT INTO kycs (user_id, sex, health_goals, dietary_preferences, food_allergies, health_concerns) values($1, $2, $3, $4, $5, $6) returning *',
     findKYC: 'SELECT * FROM kycs WHERE user_id = $1',
-    createItem: 'INSERT INTO items (admin_id, item_name, uom, allergies, class_of_food, calories_per_uom, parent_item) values ($1, $2, $3, $4, $5, $6, $7) returning *',
+    createItem: 'INSERT INTO items (admin_id, name, uom, allergies, class_of_food, calories_per_uom, parent_item) values ($1, $2, $3, $4, $5, $6, $7) returning *',
     allItems: 'SELECT * FROM items',
     findItem: 'SELECT * FROM items WHERE id = $1',
-    findItemByName: 'SELECT * FROM categories WHERE name = $1'
+    findItemByName: 'SELECT * FROM items WHERE name = $1',
+    updateItemStatus:'UPDATE items SET is_active = $1, updated_at = NOW() WHERE id = $2 returning *',
+    createParentItem: 'INSERT INTO parent_items (admin_id, name) values ($1, $2) returning *',
+    allParentItems: 'SELECT * FROM parent_items',
+    findParentItem: 'SELECT * FROM parent_items WHERE id = $1',
+    findParentItemByName: 'SELECT * FROM parent_items WHERE name = $1',
+    getActiveBundles: `SELECT b.id, b.name, b.health_impact, b.price, b.is_active,
+          json_agg(json_build_object('item', bi.item, 'qty', bi.qty)) AS mealBundles
+      FROM 
+          bundles b
+      LEFT JOIN
+          bundle_items bi ON b.id = bi.bundle_id
+      WHERE 
+          b.is_active = true
+      GROUP BY b.id`
   };
   

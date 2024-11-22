@@ -5,12 +5,12 @@ const itemTable = `DROP TABLE IF EXISTS items CASCADE;
         CREATE TABLE items (
             id SERIAL PRIMARY KEY NOT NULL,
             admin_id INTEGER NOT NULL,
-            item_name CHARACTER VARYING(255),
-            uom CHARACTER VARYING(255),
+            name CHARACTER VARYING(255),
+            uom INTEGER NOT NULL,
             allergies CHARACTER VARYING(255),
             class_of_food CHARACTER VARYING(255),
             calories_per_uom CHARACTER VARYING(255),
-            parent_item CHARACTER VARYING(255),
+            parent_item INTEGER NOT NULL,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
         )`;
