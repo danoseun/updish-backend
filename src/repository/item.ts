@@ -47,4 +47,14 @@ export const createParentItem = async (filters: Partial<Item>): Promise<Item> =>
       return item.rows[0];
   };
 
+  export const getItemsByCategory = async (filters?: Partial<Item>): Promise<Item[]> => {
+    const items = await db.query(sql.itemsByCategory, filters);
+    return items.rows;
+  };
+
+  export const findItemById = async (filters: Partial<Item>): Promise<Item> => {
+    const item = await db.query(sql.fetchItemByIdDetailed, filters);
+    return item.rows[0];
+};
+
 

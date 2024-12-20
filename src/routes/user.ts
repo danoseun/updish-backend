@@ -2,7 +2,7 @@ import { Router } from 'express';
 import passport from 'passport';
 import fileUpload from 'express-fileupload';
 
-import { checkPhoneNumberSchema, verifyUserPhoneNumberSchema, loginUserSchema, createUserWithPhoneNumberSchema, createUserWithGoogleAuthSchema, forgotPasswordSchema, acceptNewPasswordSchema, createKYCSchema, fetchKYCSchema } from '../validations/user';
+import { checkPhoneNumberSchema, verifyUserPhoneNumberSchema, loginUserSchema, createUserWithPhoneNumberSchema, createUserWithGoogleAuthSchema, forgotPasswordSchema, acceptNewPasswordSchema, createKYCSchema, fetchKYCSchema, addressCreationSchema } from '../validations/user';
 
 import { UserController } from '../controllers/user';
 import { authenticate } from '../middleware/authenticate';
@@ -21,11 +21,11 @@ userRouter.get('/kyc', authenticate(), UserController.foundKYCDetails());
 // handles social media authentication
 
 // Google login inital route - localhost:3000/v1/auth/google
-userRouter.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+//userRouter.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 // Gooogle login callback that manages the returned user object
-userRouter.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: 'https://milesrental.netlify.app/login' }), UserController.handleGoogleAuth());
-userRouter.post('/signup-with-google', createUserWithGoogleAuthSchema, UserController.createUserWithGoogleAuth());
+//userRouter.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: 'https://milesrental.netlify.app/login' }), UserController.handleGoogleAuth());
+//userRouter.post('/signup-with-google', createUserWithGoogleAuthSchema, UserController.createUserWithGoogleAuth());
 
 //userRouter.get('/auth/facebook', passport.authenticate('facebook'));
 
@@ -37,6 +37,7 @@ userRouter.post('/signup-with-google', createUserWithGoogleAuthSchema, UserContr
 userRouter.post('/send-forgot-password', forgotPasswordSchema, UserController.forgotPassword());
 
 userRouter.patch('/accept-new-password', acceptNewPasswordSchema, UserController.acceptNewPassword());
+userRouter.post('/addresses', addressCreationSchema, UserController.createAddress());
 
 // userRouter.patch('/update-password', authenticate(), updatePasswordSchema, UserController.updatePassword());
 

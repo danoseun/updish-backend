@@ -2,7 +2,8 @@ import { createParentItemTable } from "./models";
 
 export const sql = {
     createUser: 'INSERT INTO users (first_name, last_name, phone_number, email, password, age, state, city, address) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning *',
-    createUserWithGoogleAuth: 'INSERT INTO users (first)',
+    createAddress: 'INSERT INTO addresses (user_id, state, city, address) values ($1, $2, $3, $4) returning *',
+    //createUserWithGoogleAuth: 'INSERT INTO users (first)',
     deactivateUser: 'UPDATE users SET is_active = false, deactivated_at = $1, deletion_scheduled_at = $2 WHERE id = $3 RETURNING email, first_name, phone_number, is_active',
     selectToReactivateUser: 'SELECT is_active, deletion_scheduled_at FROM users WHERE id = $1',
     accountsToBeDeleted: 'SELECT id, email, first_name FROM users WHERE deletion_scheduled_at <= $1',
@@ -21,7 +22,7 @@ export const sql = {
     deleteUserImage: 'DELETE FROM user_images WHERE public_id = $1',
     createKYC: 'INSERT INTO kycs (user_id, sex, health_goals, dietary_preferences, food_allergies, health_concerns) values($1, $2, $3, $4, $5, $6) returning *',
     findKYC: 'SELECT * FROM kycs WHERE user_id = $1',
-    createItem: 'INSERT INTO items (admin_id, name, uom, allergies, class_of_food, calories_per_uom, parent_item) values ($1, $2, $3, $4, $5, $6, $7) returning *',
+    createItem: 'INSERT INTO items (admin_id, name, uom, description, category, allergies, class_of_food, calories_per_uom, parent_item, is_active) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning *',
     allItems: 'SELECT * FROM items',
     findItem: 'SELECT * FROM items WHERE id = $1',
     findItemByName: 'SELECT * FROM items WHERE name = $1',
@@ -38,6 +39,41 @@ export const sql = {
           bundle_items bi ON b.id = bi.bundle_id
       WHERE 
           b.is_active = true
-      GROUP BY b.id`
+      GROUP BY b.id`,
+      createImagesForItem: 'INSERT INTO item_images (item_id, public_id, image_url) values ($1, $2, $3) returning *',
+      itemsByCategory: `SELECT jsonb_object_agg(category, items) AS category_items
+      FROM (
+          SELECT category, JSONB_AGG(items.*) AS items
+          FROM items
+          GROUP BY category
+      ) AS grouped_items`,
+      fetchItemByIdDetailed: `SELECT 
+      i.id AS item_id,
+      i.name,
+      i.uom,
+      i.description,
+      i.category,
+      i.allergies,
+      i.class_of_food,
+      i.calories_per_uom,
+      i.is_active,
+      COALESCE(
+          JSONB_AGG(
+              JSONB_BUILD_OBJECT(
+                  'id', img.id,
+                  'public_id', img.public_id,
+                  'url', img.image_url
+              )
+          ) FILTER (WHERE img.id IS NOT NULL), '[]'
+      ) AS images
+  FROM 
+      items i
+  LEFT JOIN 
+      item_images img ON i.id = img.item_id
+  WHERE 
+      i.id = $1
+  GROUP BY 
+      i.id, i.name, i.uom, i.description, i.category, i.allergies, i.class_of_food, i.calories_per_uom, i.is_active;
+  `
   };
   

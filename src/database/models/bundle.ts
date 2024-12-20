@@ -4,6 +4,7 @@ import { logger } from '../../utilities';
 const bundleTable = `DROP TABLE IF EXISTS bundles CASCADE;
         CREATE TABLE bundles (
             id SERIAL PRIMARY KEY NOT NULL,
+            admin_id INTEGER,
             name VARCHAR(255) NOT NULL,
             health_impact VARCHAR(255) NOT NULL,
             price VARCHAR(50),

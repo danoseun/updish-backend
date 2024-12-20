@@ -3,6 +3,8 @@ export interface Item {
     admin_id?: number;
     name?: string;
     uom?: number;
+    description?: string;
+    category?: string;
     allergies?: string;
     class_of_food?: string;
     calories_per_uom?: string;
@@ -20,7 +22,7 @@ export interface ParentItem {
 
 export interface BundleItem {
     id?: number;
-    item: string;
+    item: number;
     qty: number;
   }
   

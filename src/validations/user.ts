@@ -119,3 +119,17 @@ export const fetchKYCSchema = celebrate(
     abortEarly: false
   }
 );
+
+export const addressCreationSchema = celebrate(
+  {
+    [Segments.BODY]: Joi.object().keys({
+      user_id: Joi.number().required(),
+      state: Joi.string().trim().required(),
+      city: Joi.string().trim().required(),
+      address: Joi.string().trim().required()
+    })
+  },
+  {
+    abortEarly: false
+  }
+);

@@ -9,7 +9,7 @@ import helmet from 'helmet';
 import passport from 'passport';
 
 import { handleErrors as errorMiddleware } from './middleware/error';
-import { userRouter, itemRouter } from './routes';
+import { userRouter, itemRouter, orderRouter } from './routes';
 import { logger } from './utilities'
 import variables from './variables';
 
@@ -47,6 +47,24 @@ redisClient.on('error', (err) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+const performanceLogger = (req: { method: any; path: any; }, res: { on: (arg0: string, arg1: () => void) => void; }, next: () => void) => {
+  const start = Date.now();
+
+  // Log request duration when response finishes
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`[PERF] ${req.method} ${req.path} - ${duration}ms`);
+
+    // Log slow requests
+    if (duration > 100) {
+      console.warn(`[SLOW_REQUEST] ${req.method} ${req.path} took ${duration}ms`);
+    }
+  });
+
+  next();
+};
+
+
 
 
 app.get('/v1/health', (req: Request, res: Response) =>
@@ -57,10 +75,10 @@ app.get('/v1/health', (req: Request, res: Response) =>
   }),
 );
 
-
+app.use(performanceLogger);
 app.use('/v1', userRouter);
 app.use('/v1', itemRouter);
-// app.use("/v1", categoryRouter);
+app.use("/v1", orderRouter);
 // app.use("/v1", bookingRouter);
 
 app.use(errorMiddleware);

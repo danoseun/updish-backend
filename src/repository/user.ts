@@ -1,10 +1,15 @@
 import db from '../database/query';
 import { sql } from '../database/sql';
-import type { User, User_Image } from '../interfaces';
+import type { User, Address, User_Image } from '../interfaces';
 
 export const createUser = async (filters: Partial<User>): Promise<User> => {
   const newUser = await db.query(sql.createUser, filters);
   return newUser.rows[0];
+};
+
+export const createAddress = async (filters: Partial<Address>): Promise<Address> => {
+  const newAddress = await db.query(sql.createAddress, filters);
+  return newAddress.rows[0];
 };
 
 export const findUserByEmail = async (filters: Partial<User>): Promise<User> => {

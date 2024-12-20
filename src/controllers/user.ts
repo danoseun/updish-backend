@@ -16,29 +16,25 @@ import {
   deactivateUser,
   selectToReactivateUser,
   reactivateUser,
-} from "../repository/user";
-import { createKYC, findUserKYC } from "../repository/kyc";
+  createAddress,
+} from '../repository/user';
+import { createKYC, findUserKYC } from '../repository/kyc';
 import {
   BadRequestError,
   ConflictError,
   ResourceNotFoundError,
 } from "../errors";
-import type { KYC, User, User_Image } from "../interfaces";
-import { SMS_STATUS } from "../constants";
+import type { Address, KYC, User, User_Image } from '../interfaces';
+import { SMS_STATUS } from '../constants';
 import {
   hashPassword,
   comparePassword,
   respond,
   JWT,
-  //   upload,
-  //   removeFolder,
   sendOtpToUser,
   verifyOtp,
-  logger,
-  //   deleteImage,
-  //   nanoid,
-  //   sendSmsToUser
-} from "../utilities";
+  logger
+} from '../utilities';
 // import {
 //   accountVerificationTemplate,
 //   accountDeactivationTemplate,
@@ -540,6 +536,18 @@ export const UserController = {
   //     next(error);
   //   }
   // }
+  createAddress: (): RequestHandler => async (req, res, next) => {
+    const userId = 1 || res.locals.user.id;
+    const { state, city, address } = req.body;
+    const params = [userId, state, city, address];
+    
+    try {
+      const newAddress = await createAddress(params as Partial<Address>);
+      return respond(res, newAddress, HttpStatus.CREATED);
+    } catch (error) {
+      next(error);
+    }
+  }
 };
 
 /**

@@ -6,10 +6,13 @@ export const createItemSchema = celebrate(
     [Segments.BODY]: Joi.object().keys({
       name: Joi.string().required().trim(),
       uom: Joi.number().required(),
+      description: Joi.string().required(),
+      category: Joi.string().valid('Breakfast', 'Lunch', 'Dinner').required(),
       allergies: Joi.string().trim().required(),
       class_of_food: Joi.string().trim().required(),
       calories_per_uom: Joi.string().trim().required(),
-      parent_item: Joi.number().required()
+      parent_item: Joi.number().required(),
+      is_active: Joi.boolean()
     }),
   },
   {
@@ -38,6 +41,12 @@ export const toggleItemStatusSchema = celebrate({
   }),
 });
 
+export const findItemByIdDetailedSchema = celebrate({
+  [Segments.PARAMS]: Joi.object().keys({
+    id: Joi.number().required()
+  }),
+});
+
 export const createBundleSchema = celebrate(
   {
     [Segments.BODY]: Joi.object().keys({
@@ -50,10 +59,7 @@ export const createBundleSchema = celebrate(
       items: Joi.array()
         .items(
           Joi.object({
-            item: Joi.string().trim().min(1).required().messages({
-              "string.empty": "Item name is required",
-              "string.min": "Item name must have at least 1 character",
-            }),
+            item: Joi.number().required(),
             qty: Joi.number().integer().positive().required().messages({
               "number.base": "Quantity must be a number",
               "number.integer": "Quantity must be an integer",

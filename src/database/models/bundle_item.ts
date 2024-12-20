@@ -5,7 +5,7 @@ const bundleItemTable = `DROP TABLE IF EXISTS bundle_items CASCADE;
         CREATE TABLE bundle_items (
             id SERIAL PRIMARY KEY,
             bundle_id INTEGER REFERENCES bundles(id) ON DELETE CASCADE,
-            item VARCHAR(255) NOT NULL,
+            item INTEGER REFERENCES items(id),
             qty INTEGER NOT NULL,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
