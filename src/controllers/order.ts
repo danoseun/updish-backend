@@ -75,3 +75,13 @@ export const OrderController = {
       }
     }
 };
+
+/**
+ * add address per order || primary address
+ * add code per order
+ * thoughts on fixing recurrent user meals if user creates weekly meals/not
+ * 1. label orders as subscription as one-off or recurrent(type)
+ * or should orders become subsriptions when payment is made?
+ * 2. if recurrent, run jobs to check if it's the end date or whatever agreed upon
+ * then prompt them to choose their meals or they get same meal
+ */

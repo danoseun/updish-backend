@@ -70,6 +70,7 @@ export const UserController = {
         );
       }
     } catch (error) {
+      console.log(`ERROR, ${error}`);
       next(error);
     }
   },
