@@ -12,6 +12,7 @@ import { handleErrors as errorMiddleware } from './middleware/error';
 import { userRouter, itemRouter, orderRouter } from './routes';
 import { logger } from './utilities'
 import variables from './variables';
+import { connect } from './config/database.config';
 
 // Require Passport midleware - without this your app wont work
 require('./middleware/passport');
@@ -66,6 +67,7 @@ const performanceLogger = (req: { method: any; path: any; }, res: { on: (arg0: s
 
 
 
+connect();
 
 app.get('/v1/health', (req: Request, res: Response) =>
   res.status(200).json({

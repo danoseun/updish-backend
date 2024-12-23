@@ -410,7 +410,7 @@ export const ItemController = {
  * single order - ✅
  * search for meal
  * multiple order - ✅
- * add multiple addresses
+ * add multiple addresses - ✅
  * check if bundle name exists before creation - ✅
  *
  * for selecting a meal plan, you can only do that minimum of 48hrs from now

@@ -50,15 +50,17 @@ dotenv.config();
 export const UserController = {
   sendOtpToPhoneNumber: (): RequestHandler => async (req, res, next) => {
     const { phone_number } = req.body;
+    console.log('1', phone_number);
     const params = [phone_number];
     try {
       const foundUser = await findPhoneNumber(params as Partial<User>);
-
+      console.log('2', foundUser);
       if (foundUser) {
         throw new ConflictError("phone number is in use");
       }
 
       const smsSent = await sendOtpToUser(phone_number);
+      console.log('3', smsSent);
 
       if (smsSent === SMS_STATUS.PENDING) {
         return respond(res, "sms was successfully sent", HttpStatus.OK);
