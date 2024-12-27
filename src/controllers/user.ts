@@ -163,6 +163,11 @@ export const UserController = {
       if (existingUser) {
         throw new ConflictError("email already exists");
       }
+      const foundUserWithPhone = await findPhoneNumber([req.body.phone_number] as Partial<User>);
+      console.log('2', foundUserWithPhone);
+      if (foundUserWithPhone) {
+        throw new ConflictError("phone number is in use");
+      }
       let user: User;
       params[4] = await hashPassword(req.body.password);
       user = await createUser(params as Partial<User>);
