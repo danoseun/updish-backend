@@ -11,6 +11,7 @@ const orderExtraTable = `DROP TABLE IF EXISTS order_meals CASCADE;
                 quantity INTEGER,
                 delivery_time VARCHAR(50),
                 location TEXT,
+                code VARCHAR(6),
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
         )`;

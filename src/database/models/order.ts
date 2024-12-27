@@ -1,14 +1,16 @@
 import pool from '../../config/database.config';
 import { logger } from '../../utilities';
 
+
 const orderTable = `DROP TABLE IF EXISTS orders CASCADE;
         CREATE TABLE orders (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             start_date DATE,
             end_date DATE,
-            status VARCHAR(255) NOT NULL DEFAULT 'pending',
+            status VARCHAR(255) NOT NULL DEFAULT 'created',
             total_price NUMERIC NOT NULL,
+            code VARCHAR(6),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`;

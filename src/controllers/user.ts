@@ -197,12 +197,14 @@ export const UserController = {
     let accessToken: string;
     try {
       const existingUser = await findUserByEmail([params[0]] as Partial<User>);
+      console.log('existingUser', existingUser);
       if (!existingUser) {
         throw new ResourceNotFoundError(
           "You may want to signup with this email",
         );
       }
       const compare = await comparePassword(params[1], existingUser.password);
+      console.log('comapre', compare);
       if (!compare) {
         throw new BadRequestError("Kindly check the password");
       } else {
@@ -219,6 +221,7 @@ export const UserController = {
         HttpStatus.OK,
       );
     } catch (error) {
+      console.log('LOGIN', error);
       next(error);
     }
   },

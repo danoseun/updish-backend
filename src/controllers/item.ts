@@ -200,123 +200,265 @@ export const ItemController = {
   },
 
   getActiveBundles: (): RequestHandler => async (req, res, next) => {
-    try {
-      // Pagination Parameters
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
-      const offset = (page - 1) * limit;
-
-      // Search Parameter
-      const searchQuery = req.query.search as string | undefined;
-
-      // Base Query
-      let query = `
-        SELECT 
-            b.id AS bundle_id,
-            b.name AS bundle_name,
-            b.health_impact,
-            b.price,
-            b.is_active,
-            b.created_at AS bundle_created_at,
-            b.updated_at AS bundle_updated_at,
-            bi.id AS bundle_item_id,
-            bi.qty AS bundle_item_qty,
-            i.id AS item_id,
-            i.name AS item_name,
-            i.description AS item_description,
-            i.category AS item_category,
-            i.class_of_food AS item_class_of_food,
-            i.calories_per_uom AS item_calories,
-            ii.id AS image_id,
-            ii.public_id AS image_public_id,
-            ii.image_url AS image_url
-        FROM 
-            bundles b
-        JOIN 
-            bundle_items bi ON b.id = bi.bundle_id
-        JOIN 
-            items i ON bi.item = i.id
-        LEFT JOIN 
-            item_images ii ON i.id = ii.item_id
-        WHERE b.is_active = true
-      `;
-
-      let countQuery = `
-        SELECT COUNT(*) AS total FROM bundles WHERE is_active = true
-      `;
-
-      const params: any[] = [];
-      if (searchQuery) {
-        query += ` AND b.name ILIKE $${params.length + 1}`;
-        countQuery += ` AND name ILIKE $${params.length + 1}`;
-        params.push(`%${searchQuery}%`);
+      try {
+        // Extract user_id and other parameters
+        const userId = res.locals.user.id;
+        if (!userId) {
+          return respond(res, 'User ID is required', HttpStatus.BAD_REQUEST);
+        }
+    
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        const offset = (page - 1) * limit;
+    
+        const searchQuery = req.query.search as string | undefined;
+    
+        // Get user's health goals from the `kycs` table
+        const healthGoalsQuery = `
+          SELECT health_goals
+          FROM kycs
+          WHERE user_id = $1
+        `;
+        const healthGoalsResult = await pool.query(healthGoalsQuery, [userId]);
+        const healthGoals = healthGoalsResult.rows[0]?.health_goals;
+    
+        if (!healthGoals) {
+          return respond(res, 'No health goals found for the user', HttpStatus.NOT_FOUND);
+        }
+    
+        // Base Query
+        let query = `
+          SELECT 
+              b.id AS bundle_id,
+              b.name AS bundle_name,
+              b.health_impact,
+              b.price,
+              b.is_active,
+              b.created_at AS bundle_created_at,
+              b.updated_at AS bundle_updated_at,
+              bi.id AS bundle_item_id,
+              bi.qty AS bundle_item_qty,
+              i.id AS item_id,
+              i.name AS item_name,
+              i.description AS item_description,
+              i.category AS item_category,
+              i.class_of_food AS item_class_of_food,
+              i.calories_per_uom AS item_calories,
+              ii.id AS image_id,
+              ii.public_id AS image_public_id,
+              ii.image_url AS image_url
+          FROM 
+              bundles b
+          JOIN 
+              bundle_items bi ON b.id = bi.bundle_id
+          JOIN 
+              items i ON bi.item = i.id
+          LEFT JOIN 
+              item_images ii ON i.id = ii.item_id
+          WHERE 
+              b.is_active = true
+              AND b.health_impact ILIKE $1
+        `;
+    
+        let countQuery = `
+          SELECT COUNT(*) AS total
+          FROM bundles
+          WHERE is_active = true
+          AND health_impact ILIKE $1
+        `;
+    
+        const params: any[] = [`%${healthGoals}%`];
+        if (searchQuery) {
+          query += ` AND b.name ILIKE $${params.length + 1}`;
+          countQuery += ` AND name ILIKE $${params.length + 1}`;
+          params.push(`%${searchQuery}%`);
+        }
+    
+        query += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        params.push(limit, offset);
+    
+        // Fetch paginated data
+        const { rows } = await pool.query(query, params);
+    
+        // Fetch total count
+        const countResult = await pool.query(countQuery, params.slice(0, -2));
+        const total = parseInt(countResult.rows[0].total);
+    
+        // Transform flat data into nested structure
+        const bundles = rows.reduce((acc: any[], row) => {
+          let bundle = acc.find((b) => b.id === row.bundle_id);
+    
+          if (!bundle) {
+            bundle = {
+              id: row.bundle_id,
+              name: row.bundle_name,
+              health_impact: row.health_impact,
+              price: row.price,
+              is_active: row.is_active,
+              created_at: row.bundle_created_at,
+              updated_at: row.bundle_updated_at,
+              bundle_items: []
+            };
+            acc.push(bundle);
+          }
+    
+          let bundleItem = bundle.bundle_items.find((bi: { id: any }) => bi.id === row.bundle_item_id);
+          if (!bundleItem) {
+            bundleItem = {
+              id: row.bundle_item_id,
+              qty: row.bundle_item_qty,
+              item: {
+                id: row.item_id,
+                name: row.item_name,
+                description: row.item_description,
+                category: row.item_category,
+                class_of_food: row.item_class_of_food,
+                calories_per_uom: row.item_calories,
+                images: []
+              }
+            };
+            bundle.bundle_items.push(bundleItem);
+          }
+    
+          if (row.image_id) {
+            bundleItem.item.images.push({
+              id: row.image_id,
+              public_id: row.image_public_id,
+              image_url: row.image_url
+            });
+          }
+    
+          return acc;
+        }, []);
+    
+        // Calculate pagination metadata
+        const totalPages = Math.ceil(total / limit);
+    
+        return respond(res, { bundles, page, limit, total, totalPages }, HttpStatus.OK);
+      } catch (error) {
+        console.error(error);
+        next(error);
       }
 
-      query += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-      params.push(limit, offset);
+    // this implementation returns only paginated active bundles
 
-      // Fetch paginated data
-      const { rows } = await pool.query(query, params);
+    // try {
+    //   // Pagination Parameters
+    //   const page = parseInt(req.query.page as string) || 1;
+    //   const limit = parseInt(req.query.limit as string) || 10;
+    //   const offset = (page - 1) * limit;
 
-      // Fetch total count
-      const countResult = await pool.query(countQuery, params.slice(0, -2));
-      const total = parseInt(countResult.rows[0].total);
+    //   // Search Parameter
+    //   const searchQuery = req.query.search as string | undefined;
 
-      // Transform flat data into nested structure
-      const bundles = rows.reduce((acc: any[], row) => {
-        let bundle = acc.find((b) => b.id === row.bundle_id);
+    //   // Base Query
+    //   let query = `
+    //     SELECT 
+    //         b.id AS bundle_id,
+    //         b.name AS bundle_name,
+    //         b.health_impact,
+    //         b.price,
+    //         b.is_active,
+    //         b.created_at AS bundle_created_at,
+    //         b.updated_at AS bundle_updated_at,
+    //         bi.id AS bundle_item_id,
+    //         bi.qty AS bundle_item_qty,
+    //         i.id AS item_id,
+    //         i.name AS item_name,
+    //         i.description AS item_description,
+    //         i.category AS item_category,
+    //         i.class_of_food AS item_class_of_food,
+    //         i.calories_per_uom AS item_calories,
+    //         ii.id AS image_id,
+    //         ii.public_id AS image_public_id,
+    //         ii.image_url AS image_url
+    //     FROM 
+    //         bundles b
+    //     JOIN 
+    //         bundle_items bi ON b.id = bi.bundle_id
+    //     JOIN 
+    //         items i ON bi.item = i.id
+    //     LEFT JOIN 
+    //         item_images ii ON i.id = ii.item_id
+    //     WHERE b.is_active = true
+    //   `;
 
-        if (!bundle) {
-          bundle = {
-            id: row.bundle_id,
-            name: row.bundle_name,
-            health_impact: row.health_impact,
-            price: row.price,
-            is_active: row.is_active,
-            created_at: row.bundle_created_at,
-            updated_at: row.bundle_updated_at,
-            bundle_items: []
-          };
-          acc.push(bundle);
-        }
+    //   let countQuery = `
+    //     SELECT COUNT(*) AS total FROM bundles WHERE is_active = true
+    //   `;
 
-        let bundleItem = bundle.bundle_items.find((bi: { id: any }) => bi.id === row.bundle_item_id);
-        if (!bundleItem) {
-          bundleItem = {
-            id: row.bundle_item_id,
-            qty: row.bundle_item_qty,
-            item: {
-              id: row.item_id,
-              name: row.item_name,
-              description: row.item_description,
-              category: row.item_category,
-              class_of_food: row.class_of_food,
-              calories_per_uom: row.item_calories,
-              images: []
-            }
-          };
-          bundle.bundle_items.push(bundleItem);
-        }
+    //   const params: any[] = [];
+    //   if (searchQuery) {
+    //     query += ` AND b.name ILIKE $${params.length + 1}`;
+    //     countQuery += ` AND name ILIKE $${params.length + 1}`;
+    //     params.push(`%${searchQuery}%`);
+    //   }
 
-        if (row.image_id) {
-          bundleItem.item.images.push({
-            id: row.image_id,
-            public_id: row.image_public_id,
-            image_url: row.image_url
-          });
-        }
+    //   query += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    //   params.push(limit, offset);
 
-        return acc;
-      }, []);
+    //   // Fetch paginated data
+    //   const { rows } = await pool.query(query, params);
 
-      // Calculate pagination metadata
-      const totalPages = Math.ceil(total / limit);
+    //   // Fetch total count
+    //   const countResult = await pool.query(countQuery, params.slice(0, -2));
+    //   const total = parseInt(countResult.rows[0].total);
 
-      return respond(res, { bundles, page, limit, total, totalPages }, HttpStatus.OK);
-    } catch (error) {
-      console.error(error);
-      next(error);
-    }
+    //   // Transform flat data into nested structure
+    //   const bundles = rows.reduce((acc: any[], row) => {
+    //     let bundle = acc.find((b) => b.id === row.bundle_id);
+
+    //     if (!bundle) {
+    //       bundle = {
+    //         id: row.bundle_id,
+    //         name: row.bundle_name,
+    //         health_impact: row.health_impact,
+    //         price: row.price,
+    //         is_active: row.is_active,
+    //         created_at: row.bundle_created_at,
+    //         updated_at: row.bundle_updated_at,
+    //         bundle_items: []
+    //       };
+    //       acc.push(bundle);
+    //     }
+
+    //     let bundleItem = bundle.bundle_items.find((bi: { id: any }) => bi.id === row.bundle_item_id);
+    //     if (!bundleItem) {
+    //       bundleItem = {
+    //         id: row.bundle_item_id,
+    //         qty: row.bundle_item_qty,
+    //         item: {
+    //           id: row.item_id,
+    //           name: row.item_name,
+    //           description: row.item_description,
+    //           category: row.item_category,
+    //           class_of_food: row.class_of_food,
+    //           calories_per_uom: row.item_calories,
+    //           images: []
+    //         }
+    //       };
+    //       bundle.bundle_items.push(bundleItem);
+    //     }
+
+    //     if (row.image_id) {
+    //       bundleItem.item.images.push({
+    //         id: row.image_id,
+    //         public_id: row.image_public_id,
+    //         image_url: row.image_url
+    //       });
+    //     }
+
+    //     return acc;
+    //   }, []);
+
+    //   // Calculate pagination metadata
+    //   const totalPages = Math.ceil(total / limit);
+
+    //   return respond(res, { bundles, page, limit, total, totalPages }, HttpStatus.OK);
+    // } catch (error) {
+    //   console.error(error);
+    //   next(error);
+    // }
   },
 
   getBundleById: (): RequestHandler => async (req, res, next) => {
