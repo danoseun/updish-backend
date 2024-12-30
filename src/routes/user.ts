@@ -21,15 +21,12 @@ userRouter.get('/kyc', authenticate(), UserController.foundKYCDetails());
 // handles social media authentication
 
 // Google login inital route - localhost:3000/v1/auth/google
-//userRouter.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+userRouter.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 // Gooogle login callback that manages the returned user object
-//userRouter.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: 'https://milesrental.netlify.app/login' }), UserController.handleGoogleAuth());
-//userRouter.post('/signup-with-google', createUserWithGoogleAuthSchema, UserController.createUserWithGoogleAuth());
+userRouter.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: 'https://milesrental.netlify.app/login' }), UserController.handleGoogleAuth());
+userRouter.post('/signup-with-google', createUserWithGoogleAuthSchema, UserController.createUserWithGoogleAuth());
 
-//userRouter.get('/auth/facebook', passport.authenticate('facebook'));
-
-//userRouter.get('/auth/facebook/callback', passport.authenticate('facebook', { failureRedirect: 'https://milesrental.netlify.app/login' }), UserController.handleFacebookAuth());
 
 
 // userRouter.patch('/uploads', authenticate(), fileUpload({ useTempFiles: true, limits: { fileSize: 10 * 1024 * 1024 } }), UserController.uploadPhoto());
@@ -43,9 +40,6 @@ userRouter.post('/addresses', addressCreationSchema, UserController.createAddres
 
 // userRouter.patch('/update-email', authenticate(), updateEmailSchema, UserController.updateUser());
 
-// userRouter.get('/token', authenticate(), UserController.getToken());
-
-// userRouter.post('/smile-callback', UserController.getVerificationData());
 
 // userRouter.patch('/deactivate', authenticate(), UserController.deactivateAccount());
 

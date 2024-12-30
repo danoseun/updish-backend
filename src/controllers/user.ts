@@ -276,6 +276,7 @@ export const UserController = {
 
   // This function manages the google authentication from the callback route
   handleGoogleAuth: (): RequestHandler => async (req, res, next) => {
+    console.log('HANDLER', req.user);
     try {
       if (req.user) {
         // @ts-ignore

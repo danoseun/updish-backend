@@ -19,6 +19,7 @@ interface IOauthUser {
 
 // This function normalizes the profile Object gotten from Google
 const userProfile = (profile: IOauthUser) => {
+  console.log('PROFILE', profile);
   const { id, name, emails, provider } = profile;
 
   let firstName: string;
@@ -39,6 +40,7 @@ const userProfile = (profile: IOauthUser) => {
 };
 
 passport.serializeUser(function (user: any, done) {
+  console.log('1', user);
   done(null, user.id);
 });
 
@@ -48,8 +50,10 @@ passport.deserializeUser(function (id: any, done) {
 
 const googleCallbackUrl =
   process.env.NODE_ENV === 'development'
-    ? 'http://127.0.0.1:2145/v1/auth/google/callback'
+    ? 'http://localhost:1755/v1/auth/google/callback'
     : `${variables.app.backendBaseUrl}/v1/auth/google/callback`;
+
+console.log('CALLBACK', googleCallbackUrl);
 
 passport.use(
   new GoogleStrategy(
@@ -60,7 +64,7 @@ passport.use(
       scope: ['profile', 'email'],
       passReqToCallback: true
     },
-    (_req: any, _accessToken: any, _refreshToken: any, profile: any, cb: any) => cb(null, userProfile(profile))
+    (_req: any, _accessToken: any, _refreshToken: any, profile: any, cb: any) => cb(null, userProfile(profile), console.log('DID THIS WORK?'))
   )
 );
 
