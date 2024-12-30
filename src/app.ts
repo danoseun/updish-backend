@@ -21,7 +21,7 @@ import variables from './variables';
 import { connect } from './config/database.config';
 
 // Require Passport midleware - without this your app wont work
-require('./middleware/passport');
+//require('./middleware/passport');
 
 
 const app = express();
@@ -57,25 +57,25 @@ app.use(express.urlencoded({ extended: false }));
 
 
 // Initialize Redis store.
-let redisStore = new RedisStore({
-  client: redisClient,
-  prefix: 'updish-backend:'
-});
+// let redisStore = new RedisStore({
+//   client: redisClient,
+//   prefix: 'updish-backend:'
+// });
 
-app.use(
-  session({
-    store: redisStore,
-    secret: variables.auth.sessionSecretKey,
-    cookie: {
-      maxAge: 1000 * 60 * 60 * 24 // 1 day
-    },
-    resave: false,
-    saveUninitialized: false
-  })
-);
+// app.use(
+//   session({
+//     store: redisStore,
+//     secret: variables.auth.sessionSecretKey,
+//     cookie: {
+//       maxAge: 1000 * 60 * 60 * 24 // 1 day
+//     },
+//     resave: false,
+//     saveUninitialized: false
+//   })
+// );
 
-app.use(passport.initialize());
-app.use(passport.session());
+// app.use(passport.initialize());
+// app.use(passport.session());
 
 
 const performanceLogger = (req: { method: any; path: any; }, res: { on: (arg0: string, arg1: () => void) => void; }, next: () => void) => {
