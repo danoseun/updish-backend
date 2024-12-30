@@ -27,6 +27,7 @@ userRouter.get('/auth/google', passport.authenticate('google', { scope: ['profil
 userRouter.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: 'https://milesrental.netlify.app/login' }), UserController.handleGoogleAuth());
 userRouter.post('/signup-with-google', createUserWithGoogleAuthSchema, UserController.createUserWithGoogleAuth());
 
+userRouter.post('/google-auth', UserController.googleAuth());
 
 
 // userRouter.patch('/uploads', authenticate(), fileUpload({ useTempFiles: true, limits: { fileSize: 10 * 1024 * 1024 } }), UserController.uploadPhoto());
