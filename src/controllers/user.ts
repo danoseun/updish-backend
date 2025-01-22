@@ -11,6 +11,7 @@ import {
   deleteUserImage,
   updateImgageURL,
   findUserByEmail,
+  findAdminByEmail,
   findUserById,
   updateUserPassword,
   updateUserEmail,
@@ -262,6 +263,40 @@ googleAuth: (): RequestHandler => async (req, res, next) => {
       return respond(
         res,
         { accessToken, userData: existingUser },
+        HttpStatus.OK,
+      );
+    } catch (error) {
+      console.log('LOGIN', error);
+      next(error);
+    }
+  },
+
+  loginAdmin: (): RequestHandler => async (req, res, next) => {
+    let params = [req.body.email, req.body.password];
+    let accessToken: string;
+    try {
+      const existingAdmin = await findAdminByEmail([params[0]] as Partial<User>);
+      console.log('existingAdmin', existingAdmin);
+      if (!existingAdmin) {
+        throw new ResourceNotFoundError(
+          "You may want to signup with this email",
+        );
+      }
+      const compare = await comparePassword(params[1], existingAdmin.password);
+      console.log('compare', compare);
+      if (!compare) {
+        throw new BadRequestError("Kindly check the password");
+      } else {
+        accessToken = JWT.encode({ id: existingAdmin.id, email: existingAdmin.email });
+      }
+      delete existingAdmin.password;
+      // const foundUserImage = await fetchUserImage([existingUser.id] as Partial<User_Image>);
+      // if (foundUserImage) {
+      //   existingUser.image_url = foundUserImage?.image_url;
+      // }
+      return respond(
+        res,
+        { accessToken, adminData: existingAdmin },
         HttpStatus.OK,
       );
     } catch (error) {

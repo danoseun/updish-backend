@@ -98,7 +98,9 @@ export const createKYCSchema = celebrate({
   [Segments.BODY]: Joi.object().keys({
     userId: Joi.number(),
     sex: Joi.string().trim().required(),
-    health_goals: Joi.string().trim().required(),
+    health_goals: Joi.array()
+    .items(Joi.string().trim().min(1).required())
+    .required(),
     dietary_preferences: Joi.string().trim().required(),
     food_allergies: Joi.array()
       .items(Joi.string().trim().min(1).required())

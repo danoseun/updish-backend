@@ -25,7 +25,7 @@ export const ItemController = {
   createItem: (): RequestHandler => async (req, res, next) => {
     const client = await pool.connect();
 
-    const adminId = 1 || res.locals.user.id;
+    const adminId = res.locals.admin.id;
     let itemParams = [
       adminId,
       req.body.name,
@@ -132,7 +132,7 @@ export const ItemController = {
   },
 
   createParentItem: (): RequestHandler => async (req, res, next) => {
-    const adminId = 1 || res.locals.user.id;
+    const adminId = res.locals.admin.id;
     let params = [adminId, req.body.name];
     try {
       const existingParentItem = await findParentItemByName([params[1]] as Partial<Item>);
@@ -162,6 +162,7 @@ export const ItemController = {
 
   createBundle: (): RequestHandler => async (req, res, next) => {
     const { name, items, health_impact, price, is_active }: Bundle & { is_active: boolean } = req.body;
+    const adminId = res.locals.admin.id;
 
     const client = await pool.connect();
 
@@ -174,7 +175,8 @@ export const ItemController = {
         throw new ConflictError('A bundle with this name already exists.');
       }
 
-      const bundleResult = await client.query('INSERT INTO bundles (name, health_impact, price, is_active) VALUES ($1, $2, $3, $4) RETURNING id', [
+      const bundleResult = await client.query('INSERT INTO bundles (admin_id, name, health_impact, price, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING id', [
+        adminId,
         name,
         health_impact,
         price,

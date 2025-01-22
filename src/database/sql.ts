@@ -8,6 +8,7 @@ export const sql = {
     deleteAccountQuery: 'DELETE FROM users WHERE deletion_scheduled_at <= $1',
     reactivateUser: 'UPDATE users SET is_active = true, deactivated_at = null, deletion_scheduled_at = null WHERE id = $1 RETURNING email, first_name, is_active',
     fetchUserByEmail: 'SELECT * FROM users WHERE email = $1',
+    fetchAdminByEmail: 'SELECT * FROM admins WHERE email = $1',
     fetchUserById: 'SELECT * FROM users WHERE id = $1',
     updateIsEmailVerified: 'UPDATE users SET is_email_verified = $1, updated_at = NOW() WHERE id = $2 returning *',
     updateIsPhoneNumberVerified: 'UPDATE users SET is_phone_number_verified = $1, updated_at = NOW() WHERE id = $2 returning *',

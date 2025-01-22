@@ -6,7 +6,7 @@ const kycTable = `DROP TABLE IF EXISTS kycs CASCADE;
             id SERIAL PRIMARY KEY NOT NULL,
             user_id INTEGER NOT NULL,
             sex CHARACTER VARYING(255),
-            health_goals TEXT,
+            health_goals CHARACTER VARYING(255)[],
             dietary_preferences TEXT,
             food_allergies CHARACTER VARYING(255)[],
             health_concerns CHARACTER VARYING(255)[],

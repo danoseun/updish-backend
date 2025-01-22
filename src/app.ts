@@ -15,7 +15,7 @@ import passport from 'passport';
 //import { OAuth2Client } from 'google-auth-library';
 
 import { handleErrors as errorMiddleware } from './middleware/error';
-import { userRouter, itemRouter, orderRouter } from './routes';
+import { userRouter, itemRouter, orderRouter, portalRouter } from './routes';
 import { logger } from './utilities'
 import variables from './variables';
 import { connect } from './config/database.config';
@@ -111,7 +111,8 @@ app.get('/v1/health', (req: Request, res: Response) =>
 app.use(performanceLogger);
 app.use('/v1', userRouter);
 app.use('/v1', itemRouter);
-app.use("/v1", orderRouter);
+app.use('/v1', orderRouter);
+app.use('/v1', portalRouter);
 
 app.use(errorMiddleware);
 

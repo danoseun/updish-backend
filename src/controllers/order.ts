@@ -350,4 +350,16 @@ export const OrderController = {
     ]
   }
  */
+/**
+ * fetch user last ordered meals
+ * (the above will be useful for users that were debited 
+ * but did not place an order or for others as well)
+ * 
+ * notify users 48hrs and 24hrs to the end of subsription
+ * 
+ * user can pause subscription(won't be charged for the next week)
+ * once there's a pause request, we remove them from the plan
+ * 
+ * user can continue paused subscription
+ */
 
