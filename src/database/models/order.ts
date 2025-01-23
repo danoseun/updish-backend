@@ -11,7 +11,7 @@ const orderTable = `DROP TABLE IF EXISTS orders CASCADE;
             status VARCHAR(255) NOT NULL DEFAULT 'created',
             total_price NUMERIC NOT NULL,
             code VARCHAR(6),
-            transaction_ref VARCHAR(35) NON NULL,
+            transaction_ref VARCHAR(35),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`;
