@@ -6,7 +6,7 @@ import { authenticate } from '../middleware/authenticate';
 export const orderRouter = Router();
 
 //should be authenticated via authenticate()
-orderRouter.post('/orders', OrderController.createOrder());
+orderRouter.post('/orders', authenticate(), OrderController.createOrder());
 orderRouter.get('/orders', OrderController.getOrders());
 orderRouter.get('/demand-summary', OrderController.demandSummary());
 orderRouter.get('/orders/:code', OrderController.getSalesOrder());

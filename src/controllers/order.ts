@@ -38,6 +38,7 @@ export const OrderController = {
       const orderCode = generateCode();
       const orderResult = await client.query(insertOrderQuery, [userId, startDate, endDate, totalPrice, orderCode]);
       const orderId = orderResult.rows[0].id;
+      const transaction_ref = `TXREF_${orderCode}_${Date.now().toString()}`
 
       // Insert into order_meals table
       const insertMealQuery = `

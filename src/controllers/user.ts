@@ -46,6 +46,7 @@ import {
 //   getActivationLinkURL,
 //   getForgotPasswordUrl
 // } from '../services/email';
+import variables from '../variables';
 
 dotenv.config();
 
@@ -184,34 +185,44 @@ export const UserController = {
 
 googleAuth: (): RequestHandler => async (req, res, next) => {
   const { idToken } = req.body;
-  
-  const client = new OAuth2Client('919531799409-ts5c0b9f70dgeet6kirggfgp27pdam5e.apps.googleusercontent.com');
+
+  const client = new OAuth2Client(variables.services.google.clientID);
 
   try {
       const ticket = await client.verifyIdToken({
-          idToken,
-          audience: '919531799409-ts5c0b9f70dgeet6kirggfgp27pdam5e.apps.googleusercontent.com', // Specify the CLIENT_ID of the app that accesses the backend
+          idToken
+          //audience: variables.services.google.clientID, // Specify the CLIENT_ID of the app that accesses the backend
       });
-      
+      console.log('T', ticket);
       const payload = ticket.getPayload();
       console.log('GOOGLE AUTH', payload);
       const userId = payload['sub']; // User ID from Google
+      const email = payload['email'];
       console.log('GOOGLE AUTH userID', userId);
       // Check if user exists in your database; if not, create a new user entry
-      //const userExistsQuery = await pool.query('SELECT * FROM users WHERE google_id = $1', [userId]);
+      const foundUser = await findUserByEmail([email] as Partial<User>);
       
-      // if (userExistsQuery.rows.length === 0) {
-      //     // Insert new user into database
-      //     await pool.query('INSERT INTO users (google_id, email) VALUES ($1, $2)', [userId, payload.email]);
-      // }
-
-      // Generate JWT token for your application
-      //const token = jwt.sign({ id: userId }, 'your_jwt_secret', { expiresIn: '1h' });
-      
-      //res.json({ token });
+      let accessToken: string;
+      if (foundUser) {
+          // Insert new user into database
+          accessToken = JWT.encode({ id: foundUser.id });
+          respond(res, accessToken, HttpStatus.OK);
+      } else {
+        const fullName = payload['name'];
+        const [firstName, lastName] = fullName.split(' ');
+        const newUserPayload = {
+          email,
+          firstName,
+          lastName
+        }
+        respond(res, newUserPayload, HttpStatus.OK);
+      }
   } catch (error) {
       console.error('AUTH GOOGLE', error);
-      //res.status(401).send('Invalid token');
+      if(error.message.includes("Token used too late")){
+        return respond(res, 'token has expired', HttpStatus.BAD_REQUEST);
+      }
+      next(error);
   }
 },
 
