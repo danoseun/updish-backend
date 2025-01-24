@@ -48,7 +48,7 @@ const variables = {
     redisUrl: process.env.REDISCLOUD_URL,
     flutterwave: {
       raveSecretApi: process.env.RAVE_SECRET_API,
-      raveSecetUrl: process.env.RAVE_BASE_URL
+      raveBaseUrl: process.env.RAVE_BASE_URL
     }
   },
   

@@ -27,40 +27,40 @@ import variables from '../variables';
 // }
 
 
-interface VerifyTransactionResponse {
-    status: string;
-    message: string;
-    data?: any;
-}
+// interface VerifyTransactionResponse {
+//     status: string;
+//     message: string;
+//     data?: any;
+// }
 
-export const verifyRaveTransactions = async (transactionRef: string): Promise<VerifyTransactionResponse> => {
-    try {
-        const response = await axiosService({
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${variables.services.flutterwave.raveSecretApi}`,
-            },
-            url: `${variables.services.flutterwave.raveSecetUrl}/transactions/verify_by_reference?tx_ref=${transactionRef}`,
-        });
+// export const verifyRaveTransactions = async (transactionRef: string): Promise<VerifyTransactionResponse> => {
+//     try {
+//         const response = await axiosService({
+//             method: "GET",
+//             headers: {
+//                 "Content-Type": "application/json",
+//                 Authorization: `Bearer ${variables.services.flutterwave.raveSecretApi}`,
+//             },
+//             url: `${variables.services.flutterwave.raveBaseUrl}/transactions/verify_by_reference?tx_ref=${transactionRef}`,
+//         });
 
-        // Assuming a successful response includes status and data
-        return {
-            status: 'success',
-            message: 'Transaction verified successfully.',
-            data: response.data,
-        };
-    } catch (error: any) {
-        // Extracting more information from the error object
-        const statusCode = error.response?.status || 500;
-        const errorMessage = error.response?.data?.message || "Something went wrong";
+//         // Assuming a successful response includes status and data
+//         return {
+//             status: 'success',
+//             message: 'Transaction verified successfully.',
+//             data: response.data,
+//         };
+//     } catch (error: any) {
+//         // Extracting more information from the error object
+//         const statusCode = error.response?.status || 500;
+//         const errorMessage = error.response?.data?.message || "Something went wrong";
 
-        console.error("callVerifyRaveTrx error", { statusCode, errorMessage });
+//         console.error("callVerifyRaveTrx error", { statusCode, errorMessage });
 
-        if (statusCode === 404 || statusCode === 400) {
-            return { status: "error", message: "Transaction not found!" };
-        }
+//         if (statusCode === 404 || statusCode === 400) {
+//             return { status: "error", message: "Transaction not found!" };
+//         }
 
-        return { status: "error", message: "Transaction either failed or was not found!" };
-    }
-};
+//         return { status: "error", message: "Transaction either failed or was not found!" };
+//     }
+// };

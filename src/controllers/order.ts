@@ -1,16 +1,21 @@
 import { RequestHandler } from 'express';
-import { QueryResult } from 'pg';
 import pool from '../config/database.config';
 import HttpStatus from 'http-status-codes';
 import { sql } from '../database/sql';
 import { BadRequestError, ConflictError, ResourceNotFoundError } from '../errors';
 import type { Item, ParentItem, Bundle } from '../interfaces';
 import { respond } from '../utilities';
+import { updateOrderStatusByTransactionRef } from '../repository/order';
 
 export const OrderController = {
   // add dispatch and delivery timestamp to order and its controller
   createOrder: (): RequestHandler => async (req, res, next) => {
     const { userId, meals } = req.body;
+    /**
+     * if they have ordered before
+     * check amount of meals and 
+     * do not allow them choose beyond that
+     */
 
     if (!userId || !meals || !Array.isArray(meals) || meals.length === 0) {
       return respond(res, 'Invalid Request payload', HttpStatus.BAD_REQUEST);
@@ -148,7 +153,8 @@ export const OrderController = {
       next(error);
     }
   },
-
+  
+ 
   getOrders: (): RequestHandler => async (req, res, next) => {
 
       try {
@@ -251,6 +257,10 @@ export const OrderController = {
       }
   },
 
+   /**
+   * 
+   * fetch a single order inlcuding oder meals and possible attachments
+   */
   getSalesOrder: (): RequestHandler => async (req, res, next) => {
     try {
       const { code } = req.params;

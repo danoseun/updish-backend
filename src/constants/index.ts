@@ -3,6 +3,12 @@ export enum SMS_STATUS {
   APPROVED = "approved",
 }
 
+export enum ORDER_STATUS {
+  CREATED = 'created', //-> default
+  PENDING = 'pending', //-> payment has been made
+  PAID = 'paid' //->webhook has been sent and payment has been confirmed
+}
+
 export const uoms = [
   { id: 1, name: 'Portion' },
   { id: 2, name: 'Plate' },

@@ -73,6 +73,8 @@ export const sql = {
       i.id = $1
   GROUP BY 
       i.id, i.name, i.uom, i.description, i.category, i.allergies, i.class_of_food, i.calories_per_uom, i.is_active;
-  `
+  `,
+  fetchPendingOrders: 'SELECT * FROM orders where status = $1',
+  updateOrderStatusByTransactionRef: 'UPDATE orders SET status = $1, updated_at = $2 WHERE transaction_ref = $3 RETURNING *;'
   };
   
