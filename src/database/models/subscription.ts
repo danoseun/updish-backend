@@ -9,6 +9,7 @@ const subscriptionTable = `DROP TABLE IF EXISTS subscriptions CASCADE;
             order_id INTEGER,
             start_date DATE,
             end_date DATE,
+            payment_plan_id VARCHAR(50) NOT NULL,
             status VARCHAR(255) NOT NULL DEFAULT 'created',
             total_price NUMERIC NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -7,18 +7,137 @@ import type { Item, ParentItem, Bundle } from '../interfaces';
 import { respond } from '../utilities';
 import { updateOrderStatusByTransactionRef } from '../repository/order';
 
+
+
+interface LastOrder {
+  order: any;
+  meals: any[];
+}
+
+export const getLastOrderService = async (userId: number): Promise<LastOrder | null> => {
+  const client = await pool.connect();
+
+  try {
+    // Fetch the last created order for the user
+    const orderQuery = `
+      SELECT * FROM orders
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    const orderResult = await client.query(orderQuery, [userId]);
+
+    if (!orderResult.rows.length) {
+      return null; // No orders found
+    }
+
+    const order = orderResult.rows[0];
+
+    // Fetch associated meals for the last created order
+    const mealsQuery = `
+      SELECT * FROM order_meals WHERE order_id = $1
+    `;
+    const mealsResult = await client.query(mealsQuery, [order.id]);
+
+    const meals = mealsResult.rows;
+
+    return { order, meals };
+  } catch (error) {
+    console.error('Error fetching last order:', error);
+    throw new Error('Failed to fetch last order');
+  } finally {
+    client.release();
+  }
+};
+
 export const OrderController = {
   // add dispatch and delivery timestamp to order and its controller
   createOrder: (): RequestHandler => async (req, res, next) => {
+    // const { userId, meals } = req.body;
+    // /**
+    //  * if they have ordered before
+    //  * check number of meals and 
+    //  * do not allow them choose beyond that
+    //  */
+
+    // if (!userId || !meals || !Array.isArray(meals) || meals.length === 0) {
+    //   return respond(res, 'Invalid Request payload', HttpStatus.BAD_REQUEST);
+    // }
+
+    // const client = await pool.connect();
+
+    // try {
+    //   await client.query('BEGIN');
+
+    //   // Generate unique six-digit code
+    //   const generateCode = (): string => Math.floor(100000 + Math.random() * 900000).toString();
+
+    //   // Calculate total price
+    //   const totalPrice = meals.reduce((sum, meal) => sum + meal.price, 0);
+
+    //   // Insert into orders table
+    //   const insertOrderQuery = `
+    //         INSERT INTO orders (user_id, start_date, end_date, total_price, code)
+    //         VALUES ($1, $2, $3, $4, $5)
+    //         RETURNING id
+    //       `;
+    //   const startDate = meals[0].date;
+    //   const endDate = meals[meals.length - 1].date;
+    //   const orderCode = generateCode();
+    //   const orderResult = await client.query(insertOrderQuery, [userId, startDate, endDate, totalPrice, orderCode]);
+    //   const orderId = orderResult.rows[0].id;
+    //   const transaction_ref = `TXREF_${orderCode}_${Date.now().toString()}`
+
+    //   // Insert into order_meals table
+    //   const insertMealQuery = `
+    //         INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, location, code)
+    //         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    //         RETURNING id
+    //       `;
+    //   for (const meal of meals) {
+    //     const mealCode = generateCode();
+    //     const mealResult = await client.query(insertMealQuery, [
+    //       orderId,
+    //       meal.date,
+    //       meal.category,
+    //       meal.bundleId,
+    //       meal.quantity,
+    //       meal.delivery_time,
+    //       meal.location,
+    //       mealCode
+    //     ]);
+    //     const orderMealId = mealResult.rows[0].id;
+
+    //     // Insert extras into order_extras table (if any)
+    //     if (meal.extras && meal.extras.length > 0) {
+    //       const insertExtrasQuery = `
+    //             INSERT INTO order_extras (order_id, extra_name, quantity)
+    //             VALUES ($1, $2, $3)
+    //           `;
+    //       for (const extra of meal.extras) {
+    //         await client.query(insertExtrasQuery, [orderId, extra.name, meal.quantity]);
+    //       }
+    //     }
+    //   }
+
+    //   await client.query('COMMIT');
+    //   respond(res, { orderId, message: 'Order created successfully' }, HttpStatus.CREATED);
+    // } catch (error) {
+    //   await client.query('ROLLBACK');
+    //   console.error('Order Creation Error', error);
+    //   next(error);
+    // } finally {
+    //   client.release();
+    // }
+
     const { userId, meals } = req.body;
-    /**
-     * if they have ordered before
-     * check amount of meals and 
-     * do not allow them choose beyond that
-     */
 
     if (!userId || !meals || !Array.isArray(meals) || meals.length === 0) {
       return respond(res, 'Invalid Request payload', HttpStatus.BAD_REQUEST);
+    }
+
+    if (meals.length > 21) {
+      return respond(res, 'Number of meals cannot exceed 21', HttpStatus.BAD_REQUEST);
     }
 
     const client = await pool.connect();
@@ -26,62 +145,67 @@ export const OrderController = {
     try {
       await client.query('BEGIN');
 
-      // Generate unique six-digit code
-      const generateCode = (): string => Math.floor(100000 + Math.random() * 900000).toString();
+      // Check if user has an active payment plan
+      const paymentPlanResult = await client.query(`SELECT * FROM payment_plans WHERE user_id = $1 AND status = 'active'`, [userId]);
 
-      // Calculate total price
-      const totalPrice = meals.reduce((sum, meal) => sum + meal.price, 0);
+      let paymentPlanId: string;
+      if (paymentPlanResult.rows.length) {
+        // Use existing payment plan
+        paymentPlanId = paymentPlanResult.rows[0].payment_plan_id;
+      } else {
+        // Create new payment plan using Flutterwave API
+        const flutterwaveResponse = await createPaymentPlan(userEmail); // This is a separate function to be written.
+        paymentPlanId = flutterwaveResponse.id;
 
-      // Insert into orders table
-      const insertOrderQuery = `
-            INSERT INTO orders (user_id, start_date, end_date, total_price, code)
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING id
-          `;
-      const startDate = meals[0].date;
-      const endDate = meals[meals.length - 1].date;
-      const orderCode = generateCode();
-      const orderResult = await client.query(insertOrderQuery, [userId, startDate, endDate, totalPrice, orderCode]);
-      const orderId = orderResult.rows[0].id;
-      const transaction_ref = `TXREF_${orderCode}_${Date.now().toString()}`
-
-      // Insert into order_meals table
-      const insertMealQuery = `
-            INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, location, code)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            RETURNING id
-          `;
-      for (const meal of meals) {
-        const mealCode = generateCode();
-        const mealResult = await client.query(insertMealQuery, [
-          orderId,
-          meal.date,
-          meal.category,
-          meal.bundleId,
-          meal.quantity,
-          meal.delivery_time,
-          meal.location,
-          mealCode
+        // Save new payment plan in DB
+        await client.query(`INSERT INTO payment_plans (user_id, payment_plan_id, amount, interval, status) VALUES ($1, $2, $3, $4, $5)`, [
+          userId,
+          paymentPlanId,
+          meals.reduce((sum, meal) => sum + meal.price, 0),
+          'weekly',
+          'active'
         ]);
-        const orderMealId = mealResult.rows[0].id;
+      }
 
-        // Insert extras into order_extras table (if any)
-        if (meal.extras && meal.extras.length > 0) {
-          const insertExtrasQuery = `
-                INSERT INTO order_extras (order_id, extra_name, quantity)
-                VALUES ($1, $2, $3)
-              `;
-          for (const extra of meal.extras) {
-            await client.query(insertExtrasQuery, [orderId, extra.name, meal.quantity]);
-          }
-        }
+      // Subscribe the user to the payment plan
+      await client.query(
+        `INSERT INTO subscriptions (user_id, payment_plan_id, start_date, end_date, total_price, status)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+        [userId, paymentPlanId, meals[0].date, meals[meals.length - 1].date, meals.reduce((sum, meal) => sum + meal.price, 0), 'created']
+      );
+
+      // Create the order
+      const orderQuery = `
+      INSERT INTO orders (user_id, start_date, end_date, payment_plan_id, number_of_meals, total_price, code, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id`;
+      const orderCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const orderResult = await client.query(orderQuery, [
+        userId,
+        meals[0].date,
+        meals[meals.length - 1].date,
+        paymentPlanId,
+        meals.length,
+        meals.reduce((sum, meal) => sum + meal.price, 0),
+        orderCode,
+        'created'
+      ]);
+      const orderId = orderResult.rows[0].id;
+
+      // Insert meals into `order_meals` table
+      const mealQuery = `
+      INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, location, code)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
+      for (const meal of meals) {
+        const mealCode = Math.floor(100000 + Math.random() * 900000).toString();
+        await client.query(mealQuery, [orderId, meal.date, meal.category, meal.bundleId, meal.quantity, meal.delivery_time, meal.location, mealCode]);
       }
 
       await client.query('COMMIT');
       respond(res, { orderId, message: 'Order created successfully' }, HttpStatus.CREATED);
     } catch (error) {
       await client.query('ROLLBACK');
-      console.error('Order Creation Error', error);
+      console.error('Error creating order:', error);
       next(error);
     } finally {
       client.release();
@@ -315,7 +439,98 @@ export const OrderController = {
       console.error("Error fetching order details:", error);
       next(error);
     }
+  },
+
+  /**
+   * 
+   * @returns last created order with order meals
+   */
+  getLastOrder: (): RequestHandler => async (req, res) => {
+    const userId  = res.locals.user.id;
+
+  try {
+    const lastOrder = await getLastOrderService(Number(userId));
+
+    if (!lastOrder) {
+      return res.status(404).json({ message: 'No orders found for this user' });
+    }
+
+    // Perform additional logic with the lastOrder data
+    console.log('Last order details:', lastOrder);
+
+    return res.status(200).json({
+      message: 'Successfully fetched last order in other context',
+      lastOrder,
+    });
+  } catch (error) {
+    console.error('Error in someOtherEndpoint:', error);
+    return res.status(500).json({ message: 'Failed to fetch last order' });
   }
+},
+
+updateOrderMeals: (): RequestHandler => async (req, res, next) => {
+  const userId = res.locals.user.id;
+  const { code, meals } = req.body;
+
+  if (!meals || !Array.isArray(meals) || meals.length === 0) {
+    return respond(res, 'Invalid meals payload', HttpStatus.BAD_REQUEST);
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // Fetch the existing order that has order_meals
+    const previousOrderResult = await getLastOrderService(userId)
+
+    if (previousOrderResult.meals.length === 0) {
+      return respond(res, 'Order not found', HttpStatus.NOT_FOUND);
+    }
+
+    //we can use the number_of_meals here or the value from meals array
+    const previousOrder = previousOrderResult.meals;
+
+    // Check meal count
+    if (meals.length !== previousOrder.length) {
+      return respond(
+        res,
+        `Number of meals must match the original order (${previousOrder.length})`,
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+
+    // Insert updated meals
+
+    // we can query using the code to find the order_id for use here
+    const insertMealQuery = `
+      INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, location, code)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
+    for (const meal of meals) {
+      const mealCode = Math.floor(100000 + Math.random() * 900000).toString();
+      await client.query(insertMealQuery, [
+        existingOrder.id,
+        meal.date,
+        meal.category,
+        meal.bundleId,
+        meal.quantity,
+        meal.delivery_time,
+        meal.location,
+        mealCode,
+      ]);
+    }
+
+    await client.query('COMMIT');
+    respond(res, { message: 'Order meals updated successfully' }, HttpStatus.OK);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error updating order meals:', error);
+    next(error);
+  } finally {
+    client.release();
+  }
+}
 }
 
 /**
@@ -372,5 +587,42 @@ export const OrderController = {
  * once there's a pause request, we remove them from the plan
  * 
  * user can continue paused subscription
+ */
+
+/**
+ * check for length of meals in the array, if more than 21 error out
+ * if less or equal to 21, proceed
+ * before creating an order check if there's an active payment plan for user
+ * if there's use that payment plan
+ * else create one
+ * subscribe the user to the payment plan
+ * create order, order_meals and co
+ * 
+ * 
+ * create endpoint to receive webhooks from fluuterwave
+ * once the webhook is received,
+ * if status is successful, 
+ * if existing customer order is found with transaction_ref in webhook,
+ * update the order status to paid
+ * update subscription status
+ * and notify customer via in-app and email of successful subscription
+ * else if no transaction_ref in webhook payload or available transaction_ref from flutterwave is not tied to any order in orders table based on customer email from flutterwave,
+ * then create an order with transaction_ref(if available),payment_plan_id, total_price, code, status of paid and start_date should be 7days from start_date of last order 
+ * and end_date should be 7days from new start_date
+ * also create a subscription
+ * send in-app and email notification to customers so they can enter the app and select new set of meals for the weekly subscription
+ * 
+ * 
+ * create a new patch endpoint that takes in meals and orderId or code(generated from recurring subscription)
+ * before updating the order check if meals sent in are same number of meals as in last order
+ * if not same throw an error that number of meals must be same
+ * else update the order with number of meals and create the order meals
+ * 
+ * 
+ * create endpoint that fetches last customer order and order_meals plus extras if any
+ * 
+ * 
+ *  
+ * 
  */
 
