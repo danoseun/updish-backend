@@ -6,6 +6,7 @@ import crypto from 'crypto';
 
 export const WebHookController = {
     handleWebhook: (): RequestHandler => async (req, res) => {
+        console.log('WEBHOOK', req.body);
         const { event, data } = req.body;
         const signature = req.headers['verif-hash']; // Header sent by Flutterwave
         const secretHash = process.env.FLUTTERWAVE_SECRET_HASH; // Set in environment variables

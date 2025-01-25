@@ -140,6 +140,7 @@ export const OrderController = {
       return respond(res, 'Number of meals cannot exceed 21', HttpStatus.BAD_REQUEST);
     }
 
+
     const client = await pool.connect();
 
     try {
@@ -154,7 +155,7 @@ export const OrderController = {
         paymentPlanId = paymentPlanResult.rows[0].payment_plan_id;
       } else {
         // Create new payment plan using Flutterwave API
-        const flutterwaveResponse = await createPaymentPlan(userEmail); // This is a separate function to be written.
+        const flutterwaveResponse = await createPaymentPlan(placeholderArgs); // This is a separate function to be written.
         paymentPlanId = flutterwaveResponse.id;
 
         // Save new payment plan in DB
@@ -167,6 +168,19 @@ export const OrderController = {
         ]);
       }
 
+      //subscribe user to created payment plan
+//       const response = await got.post("https://api.flutterwave.com/v3/payments", {
+//     headers: {
+//         Authorization: `Bearer ${process.env.FLW_SECRET_KEY}`
+//     },
+//     json: {
+//         // other fields...
+//         payment_plan: 3807,
+//     }
+// });
+
+
+      // start date should be two days from current date
       // Subscribe the user to the payment plan
       await client.query(
         `INSERT INTO subscriptions (user_id, payment_plan_id, start_date, end_date, total_price, status)
@@ -176,7 +190,7 @@ export const OrderController = {
 
       // Create the order
       const orderQuery = `
-      INSERT INTO orders (user_id, start_date, end_date, payment_plan_id, number_of_meals, total_price, code, status)
+      INSERT INTO orders (user_id, start_date, end_date, payment_plan_id, number_of_meals, total_price, code, status, transaction_ref)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING id`;
       const orderCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -510,7 +524,7 @@ updateOrderMeals: (): RequestHandler => async (req, res, next) => {
     for (const meal of meals) {
       const mealCode = Math.floor(100000 + Math.random() * 900000).toString();
       await client.query(insertMealQuery, [
-        existingOrder.id,
+        newOrder.id,
         meal.date,
         meal.category,
         meal.bundleId,
@@ -599,16 +613,16 @@ updateOrderMeals: (): RequestHandler => async (req, res, next) => {
  * create order, order_meals and co
  * 
  * 
- * create endpoint to receive webhooks from fluuterwave
+ * create endpoint to receive webhooks from flutterwave
  * once the webhook is received,
  * if status is successful, 
- * if existing customer order is found with transaction_ref in webhook,
+ * if existing customer order is found with transaction_ref/customer email in webhook,
  * update the order status to paid
  * update subscription status
  * and notify customer via in-app and email of successful subscription
  * else if no transaction_ref in webhook payload or available transaction_ref from flutterwave is not tied to any order in orders table based on customer email from flutterwave,
  * then create an order with transaction_ref(if available),payment_plan_id, total_price, code, status of paid and start_date should be 7days from start_date of last order 
- * and end_date should be 7days from new start_date
+ * and new end_date should be 7days from new start_date
  * also create a subscription
  * send in-app and email notification to customers so they can enter the app and select new set of meals for the weekly subscription
  * 
@@ -621,6 +635,7 @@ updateOrderMeals: (): RequestHandler => async (req, res, next) => {
  * 
  * create endpoint that fetches last customer order and order_meals plus extras if any
  * 
+ * - cancel payment plan and 48hr and 24hr notification to customers informing them of subscription renewal
  * 
  *  
  * 
