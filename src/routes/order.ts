@@ -10,6 +10,8 @@ orderRouter.post('/orders', authenticate(), OrderController.createOrder());
 orderRouter.get('/orders', OrderController.getOrders());
 orderRouter.get('/demand-summary', OrderController.demandSummary());
 orderRouter.get('/orders/:code', OrderController.getSalesOrder());
+orderRouter.get('/last-order/:code', authenticate(), OrderController.getLastOrder());
+orderRouter.patch('/update-order', authenticate(), OrderController.updateOrderMeals());
 
 
 /** GET /orders

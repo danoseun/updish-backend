@@ -8,6 +8,8 @@ const orderTable = `DROP TABLE IF EXISTS orders CASCADE;
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             start_date DATE,
             end_date DATE,
+            payment_plan_id VARCHAR(50) NOT NULL,
+            number_of_meals INT NOT NULL,
             status VARCHAR(255) NOT NULL DEFAULT 'created',
             total_price NUMERIC NOT NULL,
             code VARCHAR(6),
