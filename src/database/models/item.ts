@@ -1,22 +1,46 @@
 import pool from '../../config/database.config';
 import { logger } from '../../utilities';
 
-const itemTable = `DROP TABLE IF EXISTS items CASCADE;
+const itemTable = `
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'food_class') THEN
+              CREATE TYPE food_class AS ENUM ('carbohydrates', 'proteins', 'fats', 'vitamins', 'minerals', 'water');
+          END IF;
+        END $$;
+
+        DROP TABLE IF EXISTS items CASCADE;
         CREATE TABLE items (
             id SERIAL PRIMARY KEY NOT NULL,
             admin_id INTEGER NOT NULL,
             name CHARACTER VARYING(255),
             uom INTEGER NOT NULL,
             description CHARACTER VARYING(255),
-            category CHARACTER VARYING(255) NOT NULL,
             allergies CHARACTER VARYING(255),
-            class_of_food CHARACTER VARYING(255) NOT NULL,
+            class_of_food food_class NOT NULL,
             calories_per_uom CHARACTER VARYING(255),
             parent_item INTEGER NOT NULL,
             is_active BOOLEAN,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
-        )`;
+        );
+        `;
+
+// const itemTable = `DROP TABLE IF EXISTS items CASCADE;
+//         CREATE TABLE items (
+//             id SERIAL PRIMARY KEY NOT NULL,
+//             admin_id INTEGER NOT NULL,
+//             name CHARACTER VARYING(255),
+//             uom INTEGER NOT NULL,
+//             description CHARACTER VARYING(255),
+//             category CHARACTER VARYING(255) NOT NULL,
+//             allergies CHARACTER VARYING(255),
+//             class_of_food CHARACTER VARYING(255) NOT NULL,
+//             calories_per_uom CHARACTER VARYING(255),
+//             parent_item INTEGER NOT NULL,
+//             is_active BOOLEAN,
+//             created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+//             updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
+//         )`;
 
 /**
  * Function representing itemtableHandler

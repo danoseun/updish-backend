@@ -1,6 +1,6 @@
-import dotenv from "dotenv";
-import { RequestHandler } from "express";
-import HttpStatus from "http-status-codes";
+import dotenv from 'dotenv';
+import { RequestHandler } from 'express';
+import HttpStatus from 'http-status-codes';
 import { OAuth2Client } from 'google-auth-library';
 import {
   createUser,
@@ -18,25 +18,13 @@ import {
   deactivateUser,
   selectToReactivateUser,
   reactivateUser,
-  createAddress,
+  createAddress
 } from '../repository/user';
 import { createKYC, findUserKYC } from '../repository/kyc';
-import {
-  BadRequestError,
-  ConflictError,
-  ResourceNotFoundError,
-} from "../errors";
+import { BadRequestError, ConflictError, ResourceNotFoundError } from '../errors';
 import type { Address, KYC, User, User_Image } from '../interfaces';
 import { SMS_STATUS } from '../constants';
-import {
-  hashPassword,
-  comparePassword,
-  respond,
-  JWT,
-  sendOtpToUser,
-  verifyOtp,
-  logger
-} from '../utilities';
+import { hashPassword, comparePassword, respond, JWT, sendOtpToUser, verifyOtp, logger } from '../utilities';
 // import {
 //   accountVerificationTemplate,
 //   accountDeactivationTemplate,
@@ -59,20 +47,16 @@ export const UserController = {
       const foundUser = await findPhoneNumber(params as Partial<User>);
       console.log('2', foundUser);
       if (foundUser) {
-        throw new ConflictError("phone number is in use");
+        throw new ConflictError('phone number is in use');
       }
 
       const smsSent = await sendOtpToUser(phone_number);
       console.log('3', smsSent);
 
       if (smsSent === SMS_STATUS.PENDING) {
-        return respond(res, "sms was successfully sent", HttpStatus.OK);
+        return respond(res, 'sms was successfully sent', HttpStatus.OK);
       } else {
-        return respond(
-          res,
-          "there was a problem sending the sms",
-          HttpStatus.EXPECTATION_FAILED,
-        );
+        return respond(res, 'there was a problem sending the sms', HttpStatus.EXPECTATION_FAILED);
       }
     } catch (error) {
       console.log(`ERROR, ${error}`);
@@ -86,17 +70,9 @@ export const UserController = {
     try {
       const smsResult = await verifyOtp(phone_number, otp);
       if (smsResult === SMS_STATUS.APPROVED) {
-        return respond(
-          res,
-          `${phone_number} verified successfully`,
-          HttpStatus.OK,
-        );
+        return respond(res, `${phone_number} verified successfully`, HttpStatus.OK);
       } else {
-        return respond(
-          res,
-          "there was a problem verifying the phone number",
-          HttpStatus.EXPECTATION_FAILED,
-        );
+        return respond(res, 'there was a problem verifying the phone number', HttpStatus.EXPECTATION_FAILED);
       }
     } catch (error) {
       next(error);
@@ -105,31 +81,13 @@ export const UserController = {
 
   saveKYCDetails: (): RequestHandler => async (req, res, next) => {
     // const userId = res.locals.user.id;
-    const {
-      userId,
-      sex,
-      health_goals,
-      dietary_preferences,
-      food_allergies,
-      health_concerns,
-    } = req.body;
+    const { userId, sex, health_goals, dietary_preferences, food_allergies, health_concerns } = req.body;
     try {
       const user = await findUserById([userId] as Partial<User>);
       if (!user) {
-        return respond(
-          res,
-          `user with id of ${userId} does not exist`,
-          HttpStatus.BAD_REQUEST,
-        );
+        return respond(res, `user with id of ${userId} does not exist`, HttpStatus.BAD_REQUEST);
       }
-      const kycDetails = await createKYC([
-        userId,
-        sex,
-        health_goals,
-        dietary_preferences,
-        food_allergies,
-        health_concerns,
-      ] as Partial<KYC>);
+      const kycDetails = await createKYC([userId, sex, health_goals, dietary_preferences, food_allergies, health_concerns] as Partial<KYC>);
       return respond(res, kycDetails, HttpStatus.CREATED);
     } catch (error) {
       next(error);
@@ -156,20 +114,18 @@ export const UserController = {
       req.body.age,
       req.body.state,
       req.body.city,
-      req.body.address,
+      req.body.address
     ];
 
     try {
-      const existingUser = await findUserByEmail([
-        req.body.email,
-      ] as Partial<User>);
+      const existingUser = await findUserByEmail([req.body.email] as Partial<User>);
       if (existingUser) {
-        throw new ConflictError("email already exists");
+        throw new ConflictError('email already exists');
       }
       const foundUserWithPhone = await findPhoneNumber([req.body.phone_number] as Partial<User>);
       console.log('2', foundUserWithPhone);
       if (foundUserWithPhone) {
-        throw new ConflictError("phone number is in use");
+        throw new ConflictError('phone number is in use');
       }
       let user: User;
       params[4] = await hashPassword(req.body.password);
@@ -181,17 +137,15 @@ export const UserController = {
     }
   },
 
+  googleAuth: (): RequestHandler => async (req, res, next) => {
+    const { idToken } = req.body;
 
+    const client = new OAuth2Client(variables.services.google.clientID);
 
-googleAuth: (): RequestHandler => async (req, res, next) => {
-  const { idToken } = req.body;
-
-  const client = new OAuth2Client(variables.services.google.clientID);
-
-  try {
+    try {
       const ticket = await client.verifyIdToken({
-          idToken
-          //audience: variables.services.google.clientID, // Specify the CLIENT_ID of the app that accesses the backend
+        idToken
+        //audience: variables.services.google.clientID, // Specify the CLIENT_ID of the app that accesses the backend
       });
       console.log('T', ticket);
       const payload = ticket.getPayload();
@@ -201,12 +155,12 @@ googleAuth: (): RequestHandler => async (req, res, next) => {
       console.log('GOOGLE AUTH userID', userId);
       // Check if user exists in your database; if not, create a new user entry
       const foundUser = await findUserByEmail([email] as Partial<User>);
-      
+
       let accessToken: string;
       if (foundUser) {
-          // Insert new user into database
-          accessToken = JWT.encode({ id: foundUser.id });
-          respond(res, accessToken, HttpStatus.OK);
+        // Insert new user into database
+        accessToken = JWT.encode({ id: foundUser.id });
+        respond(res, accessToken, HttpStatus.OK);
       } else {
         const fullName = payload['name'];
         const [firstName, lastName] = fullName.split(' ');
@@ -214,20 +168,17 @@ googleAuth: (): RequestHandler => async (req, res, next) => {
           email,
           firstName,
           lastName
-        }
+        };
         respond(res, newUserPayload, HttpStatus.OK);
       }
-  } catch (error) {
+    } catch (error) {
       console.error('AUTH GOOGLE', error);
-      if(error.message.includes("Token used too late")){
+      if (error.message.includes('Token used too late')) {
         return respond(res, 'token has expired', HttpStatus.BAD_REQUEST);
       }
       next(error);
-  }
-},
-
-  
-
+    }
+  },
 
   verifyUserEmail: (): RequestHandler => async (req, res, next) => {
     // const { token } = req.params;
@@ -255,14 +206,12 @@ googleAuth: (): RequestHandler => async (req, res, next) => {
       const existingUser = await findUserByEmail([params[0]] as Partial<User>);
       console.log('existingUser', existingUser);
       if (!existingUser) {
-        throw new ResourceNotFoundError(
-          "You may want to signup with this email",
-        );
+        throw new ResourceNotFoundError('You may want to signup with this email');
       }
       const compare = await comparePassword(params[1], existingUser.password);
       console.log('comapre', compare);
       if (!compare) {
-        throw new BadRequestError("Kindly check the password");
+        throw new BadRequestError('Kindly check the password');
       } else {
         accessToken = JWT.encode({ id: existingUser.id });
       }
@@ -271,11 +220,7 @@ googleAuth: (): RequestHandler => async (req, res, next) => {
       // if (foundUserImage) {
       //   existingUser.image_url = foundUserImage?.image_url;
       // }
-      return respond(
-        res,
-        { accessToken, userData: existingUser },
-        HttpStatus.OK,
-      );
+      return respond(res, { accessToken, userData: existingUser }, HttpStatus.OK);
     } catch (error) {
       console.log('LOGIN', error);
       next(error);
@@ -289,14 +234,12 @@ googleAuth: (): RequestHandler => async (req, res, next) => {
       const existingAdmin = await findAdminByEmail([params[0]] as Partial<User>);
       console.log('existingAdmin', existingAdmin);
       if (!existingAdmin) {
-        throw new ResourceNotFoundError(
-          "You may want to signup with this email",
-        );
+        throw new ResourceNotFoundError('You may want to signup with this email');
       }
       const compare = await comparePassword(params[1], existingAdmin.password);
       console.log('compare', compare);
       if (!compare) {
-        throw new BadRequestError("Kindly check the password");
+        throw new BadRequestError('Kindly check the password');
       } else {
         accessToken = JWT.encode({ id: existingAdmin.id, email: existingAdmin.email });
       }
@@ -305,11 +248,7 @@ googleAuth: (): RequestHandler => async (req, res, next) => {
       // if (foundUserImage) {
       //   existingUser.image_url = foundUserImage?.image_url;
       // }
-      return respond(
-        res,
-        { accessToken, adminData: existingAdmin },
-        HttpStatus.OK,
-      );
+      return respond(res, { accessToken, adminData: existingAdmin }, HttpStatus.OK);
     } catch (error) {
       console.log('LOGIN', error);
       next(error);
@@ -391,15 +330,11 @@ googleAuth: (): RequestHandler => async (req, res, next) => {
           return respond(res, { email, firstName, lastName }, HttpStatus.OK);
         }
       } else {
-        return respond(
-          res,
-          "error sign in with google auth",
-          HttpStatus.BAD_REQUEST,
-        );
+        return respond(res, 'error sign in with google auth', HttpStatus.BAD_REQUEST);
       }
     } catch (error) {
-      console.log("[GOOGLE SOCIAL AUTH ERROR]", error);
-      logger.error("[GOOGLE SOCIAL AUTH ERROR]", error);
+      console.log('[GOOGLE SOCIAL AUTH ERROR]', error);
+      logger.error('[GOOGLE SOCIAL AUTH ERROR]', error);
       next(error);
     }
   },
@@ -414,15 +349,13 @@ googleAuth: (): RequestHandler => async (req, res, next) => {
       req.body.age,
       req.body.state,
       req.body.city,
-      req.body.address,
+      req.body.address
     ];
 
     try {
-      const existingUser = await findUserByEmail([
-        req.body.email,
-      ] as Partial<User>);
+      const existingUser = await findUserByEmail([req.body.email] as Partial<User>);
       if (existingUser) {
-        throw new ConflictError("email already exists");
+        throw new ConflictError('email already exists');
       }
       let user: User;
       user = await createUser(params as Partial<User>);
@@ -471,21 +404,15 @@ googleAuth: (): RequestHandler => async (req, res, next) => {
     try {
       const foundUser = await findUserByEmail([email] as Partial<User>);
       if (!foundUser) {
-        throw new BadRequestError(
-          "the number you are calling is not available",
-        );
+        throw new BadRequestError('the number you are calling is not available');
       } else {
         // send otp
         const smsSent = await sendOtpToUser(foundUser?.phone_number);
 
         if (smsSent === SMS_STATUS.PENDING) {
-          return respond(res, "sms was successfully sent", HttpStatus.OK);
+          return respond(res, 'sms was successfully sent', HttpStatus.OK);
         } else {
-          return respond(
-            res,
-            "there was a problem sending the sms",
-            HttpStatus.EXPECTATION_FAILED,
-          );
+          return respond(res, 'there was a problem sending the sms', HttpStatus.EXPECTATION_FAILED);
         }
       }
     } catch (error) {
@@ -499,20 +426,13 @@ googleAuth: (): RequestHandler => async (req, res, next) => {
     try {
       const foundUser = await findUserByEmail([email] as Partial<User>);
       if (!foundUser) {
-        throw new BadRequestError("account does not exist");
+        throw new BadRequestError('account does not exist');
       } else {
         const newPass = await hashPassword(newPassword);
-        updatedUser = await updateUserPassword([
-          newPass,
-          foundUser.id,
-        ] as Partial<User>);
+        updatedUser = await updateUserPassword([newPass, foundUser.id] as Partial<User>);
         delete updatedUser.password;
       }
-      return respond(
-        res,
-        { message: "Password updated successfully", updatedUser },
-        HttpStatus.OK,
-      );
+      return respond(res, { message: 'Password updated successfully', updatedUser }, HttpStatus.OK);
     } catch (error) {
       next(error);
     }
@@ -637,7 +557,7 @@ googleAuth: (): RequestHandler => async (req, res, next) => {
     const userId = 1 || res.locals.user.id;
     const { state, city, address } = req.body;
     const params = [userId, state, city, address];
-    
+
     try {
       const newAddress = await createAddress(params as Partial<Address>);
       return respond(res, newAddress, HttpStatus.CREATED);
