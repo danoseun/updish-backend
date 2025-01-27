@@ -130,43 +130,43 @@ export const OrderController = {
     //   client.release();
     // }
 
-    const { userId, meals } = req.body;
+    // const { userId, meals } = req.body;
 
-    if (!userId || !meals || !Array.isArray(meals) || meals.length === 0) {
-      return respond(res, 'Invalid Request payload', HttpStatus.BAD_REQUEST);
-    }
+    // if (!userId || !meals || !Array.isArray(meals) || meals.length === 0) {
+    //   return respond(res, 'Invalid Request payload', HttpStatus.BAD_REQUEST);
+    // }
 
-    if (meals.length > 21) {
-      return respond(res, 'Number of meals cannot exceed 21', HttpStatus.BAD_REQUEST);
-    }
+    // if (meals.length > 21) {
+    //   return respond(res, 'Number of meals cannot exceed 21', HttpStatus.BAD_REQUEST);
+    // }
 
 
-    const client = await pool.connect();
+    // const client = await pool.connect();
 
-    try {
-      await client.query('BEGIN');
+    // try {
+    //   await client.query('BEGIN');
 
-      // Check if user has an active payment plan
-      const paymentPlanResult = await client.query(`SELECT * FROM payment_plans WHERE user_id = $1 AND status = 'active'`, [userId]);
+    //   // Check if user has an active payment plan
+    //   const paymentPlanResult = await client.query(`SELECT * FROM payment_plans WHERE user_id = $1 AND status = 'active'`, [userId]);
 
-      let paymentPlanId: string;
-      if (paymentPlanResult.rows.length) {
-        // Use existing payment plan
-        paymentPlanId = paymentPlanResult.rows[0].payment_plan_id;
-      } else {
-        // Create new payment plan using Flutterwave API
-        const flutterwaveResponse = await createPaymentPlan(placeholderArgs); // This is a separate function to be written.
-        paymentPlanId = flutterwaveResponse.id;
+    //   let paymentPlanId: string;
+    //   if (paymentPlanResult.rows.length) {
+    //     // Use existing payment plan
+    //     paymentPlanId = paymentPlanResult.rows[0].payment_plan_id;
+    //   } else {
+    //     // Create new payment plan using Flutterwave API
+    //     const flutterwaveResponse = await createPaymentPlan(placeholderArgs); // This is a separate function to be written.
+    //     paymentPlanId = flutterwaveResponse.id;
 
-        // Save new payment plan in DB
-        await client.query(`INSERT INTO payment_plans (user_id, payment_plan_id, amount, interval, status) VALUES ($1, $2, $3, $4, $5)`, [
-          userId,
-          paymentPlanId,
-          meals.reduce((sum, meal) => sum + meal.price, 0),
-          'weekly',
-          'active'
-        ]);
-      }
+    //     // Save new payment plan in DB
+    //     await client.query(`INSERT INTO payment_plans (user_id, payment_plan_id, amount, interval, status) VALUES ($1, $2, $3, $4, $5)`, [
+    //       userId,
+    //       paymentPlanId,
+    //       meals.reduce((sum, meal) => sum + meal.price, 0),
+    //       'weekly',
+    //       'active'
+    //     ]);
+    //   }
 
       //subscribe user to created payment plan
 //       const response = await got.post("https://api.flutterwave.com/v3/payments", {
@@ -182,48 +182,48 @@ export const OrderController = {
 
       // start date should be two days from current date
       // Subscribe the user to the payment plan
-      await client.query(
-        `INSERT INTO subscriptions (user_id, payment_plan_id, start_date, end_date, total_price, status)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-        [userId, paymentPlanId, meals[0].date, meals[meals.length - 1].date, meals.reduce((sum, meal) => sum + meal.price, 0), 'created']
-      );
+    //   await client.query(
+    //     `INSERT INTO subscriptions (user_id, payment_plan_id, start_date, end_date, total_price, status)
+    //    VALUES ($1, $2, $3, $4, $5, $6)`,
+    //     [userId, paymentPlanId, meals[0].date, meals[meals.length - 1].date, meals.reduce((sum, meal) => sum + meal.price, 0), 'created']
+    //   );
 
-      // Create the order
-      const orderQuery = `
-      INSERT INTO orders (user_id, start_date, end_date, payment_plan_id, number_of_meals, total_price, code, status, transaction_ref)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id`;
-      const orderCode = Math.floor(100000 + Math.random() * 900000).toString();
-      const orderResult = await client.query(orderQuery, [
-        userId,
-        meals[0].date,
-        meals[meals.length - 1].date,
-        paymentPlanId,
-        meals.length,
-        meals.reduce((sum, meal) => sum + meal.price, 0),
-        orderCode,
-        'created'
-      ]);
-      const orderId = orderResult.rows[0].id;
+    //   // Create the order
+    //   const orderQuery = `
+    //   INSERT INTO orders (user_id, start_date, end_date, payment_plan_id, number_of_meals, total_price, code, status, transaction_ref)
+    //   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    //   RETURNING id`;
+    //   const orderCode = Math.floor(100000 + Math.random() * 900000).toString();
+    //   const orderResult = await client.query(orderQuery, [
+    //     userId,
+    //     meals[0].date,
+    //     meals[meals.length - 1].date,
+    //     paymentPlanId,
+    //     meals.length,
+    //     meals.reduce((sum, meal) => sum + meal.price, 0),
+    //     orderCode,
+    //     'created'
+    //   ]);
+    //   const orderId = orderResult.rows[0].id;
 
-      // Insert meals into `order_meals` table
-      const mealQuery = `
-      INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, location, code)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
-      for (const meal of meals) {
-        const mealCode = Math.floor(100000 + Math.random() * 900000).toString();
-        await client.query(mealQuery, [orderId, meal.date, meal.category, meal.bundleId, meal.quantity, meal.delivery_time, meal.location, mealCode]);
-      }
+    //   // Insert meals into `order_meals` table
+    //   const mealQuery = `
+    //   INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, address, code)
+    //   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
+    //   for (const meal of meals) {
+    //     const mealCode = Math.floor(100000 + Math.random() * 900000).toString();
+    //     await client.query(mealQuery, [orderId, meal.date, meal.category, meal.bundleId, meal.quantity, meal.delivery_time, meal.address, mealCode]);
+    //   }
 
-      await client.query('COMMIT');
-      respond(res, { orderId, message: 'Order created successfully' }, HttpStatus.CREATED);
-    } catch (error) {
-      await client.query('ROLLBACK');
-      console.error('Error creating order:', error);
-      next(error);
-    } finally {
-      client.release();
-    }
+    //   await client.query('COMMIT');
+    //   respond(res, { orderId, message: 'Order created successfully' }, HttpStatus.CREATED);
+    // } catch (error) {
+    //   await client.query('ROLLBACK');
+    //   console.error('Error creating order:', error);
+    //   next(error);
+    // } finally {
+    //   client.release();
+    // }
   },
 
   demandSummary: (): RequestHandler => async (req, res, next) => {
@@ -524,7 +524,7 @@ updateOrderMeals: (): RequestHandler => async (req, res, next) => {
     for (const meal of meals) {
       const mealCode = Math.floor(100000 + Math.random() * 900000).toString();
       await client.query(insertMealQuery, [
-        newOrder.id,
+        //newOrder.id,
         meal.date,
         meal.category,
         meal.bundleId,

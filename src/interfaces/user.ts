@@ -16,6 +16,7 @@ export interface User {
     image_url?: string;
     accessToken?: string;
     is_active?: boolean;
+    push_token?: string;
     deactivated_at?: Date;
     deletion_scheduled_at?: Date;
     created_at?: Date;

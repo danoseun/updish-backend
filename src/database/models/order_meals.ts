@@ -10,7 +10,7 @@ const orderExtraTable = `DROP TABLE IF EXISTS order_meals CASCADE;
                 bundle_id INTEGER REFERENCES bundles(id),
                 quantity INTEGER,
                 delivery_time VARCHAR(50),
-                location TEXT,
+                address TEXT,
                 code VARCHAR(6),
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()

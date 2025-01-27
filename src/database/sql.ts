@@ -10,6 +10,7 @@ export const sql = {
     fetchUserByEmail: 'SELECT * FROM users WHERE email = $1',
     fetchAdminByEmail: 'SELECT * FROM admins WHERE email = $1',
     fetchUserById: 'SELECT * FROM users WHERE id = $1',
+    updatePushToken: 'UPDATE users SET push_token = $1 WHERE id = $2 RETURNING id, email, push_token',
     updateIsEmailVerified: 'UPDATE users SET is_email_verified = $1, updated_at = NOW() WHERE id = $2 returning *',
     updateIsPhoneNumberVerified: 'UPDATE users SET is_phone_number_verified = $1, updated_at = NOW() WHERE id = $2 returning *',
     findPhoneNumber: 'SELECT phone_number FROM users WHERE phone_number = $1',

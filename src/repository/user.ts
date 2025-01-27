@@ -42,6 +42,11 @@ export const updateIsPhoneVerified = async (filters: Partial<User>): Promise<Use
   return foundUser.rows[0];
 };
 
+export const updateUserPushToken = async (filters: Partial<User>): Promise<User> => {
+  const foundUser = await db.query(sql.updatePushToken, filters);
+  return foundUser.rows[0];
+};
+
 export const findPhoneNumber = async (filters: Partial<User>): Promise<User> => {
   const foundUser = await db.query(sql.findPhoneNumber, filters);
   return foundUser.rows[0];
