@@ -135,3 +135,10 @@ export const addressCreationSchema = celebrate(
     abortEarly: false
   }
 );
+
+export const savePushTokenSchema = celebrate({
+  [Segments.BODY]: Joi.object().keys({
+    userId: Joi.number().required(),
+    newPushToken: Joi.string().trim().required()
+  }),
+});
