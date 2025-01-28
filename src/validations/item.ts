@@ -7,7 +7,7 @@ export const createItemSchema = celebrate(
       name: Joi.string().required().trim(),
       uom: Joi.number().required(),
       description: Joi.string().required(),
-      category: Joi.string().valid('Breakfast', 'Lunch', 'Dinner').required(),
+      category: Joi.string().valid('Breakfast', 'Lunch', 'Dinner'),
       allergies: Joi.string().trim().required(),
       class_of_food: Joi.string().trim().required(),
       calories_per_uom: Joi.string().trim().required(),
@@ -78,7 +78,7 @@ export const createBundleSchema = celebrate(
         "string.empty": "Health impact is required",
         "string.max": "Health impact must not exceed 255 characters",
       }),
-
+      category: Joi.string().valid('Breakfast', 'Lunch', 'Dinner'),
       price: Joi.string()
         .trim()
         .regex(/^\d+(,\d{3})*(N)?$/)

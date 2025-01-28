@@ -161,7 +161,7 @@ export const ItemController = {
   },
 
   createBundle: (): RequestHandler => async (req, res, next) => {
-    const { name, items, health_impact, price, is_active }: Bundle & { is_active: boolean } = req.body;
+    const { name, items, health_impact, category, price, is_active }: Bundle & { is_active: boolean } = req.body;
     const adminId = res.locals.admin.id;
 
     const client = await pool.connect();
@@ -175,10 +175,11 @@ export const ItemController = {
         throw new ConflictError('A bundle with this name already exists.');
       }
 
-      const bundleResult = await client.query('INSERT INTO bundles (admin_id, name, health_impact, price, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING id', [
+      const bundleResult = await client.query('INSERT INTO bundles (admin_id, name, health_impact, category, price, is_active) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id', [
         adminId,
         name,
         health_impact,
+        category,
         price,
         is_active
       ]);

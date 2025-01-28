@@ -8,7 +8,7 @@ const itemTable = `DROP TABLE IF EXISTS items CASCADE;
             name CHARACTER VARYING(255),
             uom INTEGER NOT NULL,
             description CHARACTER VARYING(255),
-            category CHARACTER VARYING(255) NOT NULL,
+            category CHARACTER VARYING(255),
             allergies CHARACTER VARYING(255),
             class_of_food CHARACTER VARYING(255) NOT NULL,
             calories_per_uom CHARACTER VARYING(255),

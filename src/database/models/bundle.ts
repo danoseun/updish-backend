@@ -7,6 +7,7 @@ const bundleTable = `DROP TABLE IF EXISTS bundles CASCADE;
             admin_id INTEGER,
             name VARCHAR(255) NOT NULL,
             health_impact VARCHAR(255) NOT NULL,
+            category VARCHAR(255) NOT NULL,
             price VARCHAR(50),
             is_active BOOLEAN,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
