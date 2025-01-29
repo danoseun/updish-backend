@@ -18,7 +18,8 @@ import {
   deactivateUser,
   selectToReactivateUser,
   reactivateUser,
-  createAddress
+  createAddress,
+  updateUserPushToken,
 } from '../repository/user';
 import { createKYC, findUserKYC } from '../repository/kyc';
 import { BadRequestError, ConflictError, ResourceNotFoundError } from '../errors';
@@ -163,7 +164,7 @@ export const UserController = {
         respond(res, accessToken, HttpStatus.OK);
       } else {
         const fullName = payload['name'];
-        const [firstName, lastName] = fullName.split(' ');
+        const [firstName, lastName] = fullName?.split(' ');
         const newUserPayload = {
           email,
           firstName,
@@ -209,7 +210,7 @@ export const UserController = {
         throw new ResourceNotFoundError('You may want to signup with this email');
       }
       const compare = await comparePassword(params[1], existingUser.password);
-      console.log('comapre', compare);
+      console.log('compare', compare);
       if (!compare) {
         throw new BadRequestError('Kindly check the password');
       } else {
@@ -223,6 +224,18 @@ export const UserController = {
       return respond(res, { accessToken, userData: existingUser }, HttpStatus.OK);
     } catch (error) {
       console.log('LOGIN', error);
+      next(error);
+    }
+  },
+
+  savePushToken: (): RequestHandler => async(req, res, next) => {
+
+    const { userId, newPushToken } = req.body;
+
+    try {
+      const updatedToken = await updateUserPushToken([newPushToken, userId] as Partial<User>);
+      respond(res, updatedToken, HttpStatus.OK);
+    } catch (error) {
       next(error);
     }
   },
@@ -359,8 +372,8 @@ export const UserController = {
       }
       let user: User;
       user = await createUser(params as Partial<User>);
-
-      respond<User>(res, user, HttpStatus.CREATED);
+      const accessToken = JWT.encode({ id: user.id });
+      respond(res, { accessToken, user }, HttpStatus.CREATED);
     } catch (error) {
       next(error);
     }

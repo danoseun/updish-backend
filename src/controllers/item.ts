@@ -62,6 +62,7 @@ export const ItemController = {
               imagesArray.push(images.rows[0]);
             }
           } else {
+              //@ts-ignore
             const imageParams = [newItem.rows[0].id, uploads.public_id, uploads.secure_url];
             images = await client.query(sql.createImagesForItem, imageParams);
             imagesArray.push(images.rows[0]);
@@ -161,7 +162,7 @@ export const ItemController = {
   },
 
   createBundle: (): RequestHandler => async (req, res, next) => {
-    const { name, items, health_impact, price, is_active, category }: Bundle & { is_active: boolean } = req.body;
+    const { name, items, health_impact, category, price, is_active }: Bundle & { is_active: boolean } = req.body;
     const adminId = res.locals.admin.id;
 
     const client = await pool.connect();

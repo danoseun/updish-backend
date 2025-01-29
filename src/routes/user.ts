@@ -2,7 +2,7 @@ import { Router } from 'express';
 import passport from 'passport';
 import fileUpload from 'express-fileupload';
 
-import { checkPhoneNumberSchema, verifyUserPhoneNumberSchema, loginUserSchema, createUserWithPhoneNumberSchema, createUserWithGoogleAuthSchema, forgotPasswordSchema, acceptNewPasswordSchema, createKYCSchema, fetchKYCSchema, addressCreationSchema } from '../validations/user';
+import { checkPhoneNumberSchema, verifyUserPhoneNumberSchema, loginUserSchema, createUserWithPhoneNumberSchema, createUserWithGoogleAuthSchema, forgotPasswordSchema, acceptNewPasswordSchema, createKYCSchema, fetchKYCSchema, addressCreationSchema, savePushTokenSchema } from '../validations/user';
 
 import { UserController } from '../controllers/user';
 import { authenticate } from '../middleware/authenticate';
@@ -34,6 +34,7 @@ userRouter.post('/google-auth', UserController.googleAuth());
 
 userRouter.post('/send-forgot-password', forgotPasswordSchema, UserController.forgotPassword());
 
+userRouter.patch('/update-push-token', savePushTokenSchema, UserController.savePushToken());
 userRouter.patch('/accept-new-password', acceptNewPasswordSchema, UserController.acceptNewPassword());
 userRouter.post('/addresses', addressCreationSchema, UserController.createAddress());
 

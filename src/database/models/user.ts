@@ -19,6 +19,7 @@ const userTable = `DROP TABLE IF EXISTS users CASCADE;
             is_phone_number_verified BOOLEAN,
             identity_verified BOOLEAN,
             is_active BOOLEAN DEFAULT true,
+            push_token TEXT,
             deactivated_at TIMESTAMP,
             deletion_scheduled_at TIMESTAMP,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,

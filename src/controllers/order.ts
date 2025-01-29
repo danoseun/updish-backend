@@ -189,6 +189,8 @@ export const OrderController = {
         orderCode,
         'created'
       ]);
+
+      //@ts-ignore
       const orderId = orderResult.rows[0].id;
 
       console.log({ orderId });
@@ -728,9 +730,12 @@ export const OrderController = {
         orderCode,
         'created'
       ]);
+      //@ts-ignore
+
       const orderId = orderResult.rows[0].id;
 
       // create subscription for the new week
+      //@ts-ignore
       const startDate = new Date(orderResult.rows[0].start_date);
       const newStartDate = new Date(startDate.setDate(startDate.getDate() + 7));
       const newEndDate = new Date(newStartDate);
