@@ -81,7 +81,6 @@ export const createBundleSchema = celebrate(
       category: Joi.string().valid('breakfast', 'lunch', 'dinner').required().messages({
         'string.empty': 'Category is required'
       }),
-      category: Joi.string().valid('Breakfast', 'Lunch', 'Dinner'),
       price: Joi.string()
         .trim()
         .regex(/^\d+(,\d{3})*(N)?$/)
