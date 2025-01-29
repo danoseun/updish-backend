@@ -1,7 +1,6 @@
 import axiosService from './axios';
 import variables from '../variables';
-
-
+import crypto from 'crypto';
 
 // export const callVerifyRaveTrx: any(trxRef: string) => {
 //     try {
@@ -26,7 +25,6 @@ import variables from '../variables';
 //     }
 // }
 
-
 // interface VerifyTransactionResponse {
 //     status: string;
 //     message: string;
@@ -45,11 +43,11 @@ import variables from '../variables';
 //         });
 
 //         // Assuming a successful response includes status and data
-//         return {
-//             status: 'success',
-//             message: 'Transaction verified successfully.',
-//             data: response.data,
-//         };
+// return {
+//     status: 'success',
+//     message: 'Transaction verified successfully.',
+//     data: response.data,
+// };
 //     } catch (error: any) {
 //         // Extracting more information from the error object
 //         const statusCode = error.response?.status || 500;
@@ -64,3 +62,92 @@ import variables from '../variables';
 //         return { status: "error", message: "Transaction either failed or was not found!" };
 //     }
 // };
+
+interface InitiatePayment {
+  tx_ref: string;
+  amount: string;
+  currency: string;
+  payment_plan: string;
+  redirect_url: string;
+  email: string;
+  name?: string;
+  phonenumber?: string;
+}
+
+export const createPaymentPlan = async (amount: number, plan_name: string, interval: string) => {
+  try {
+    const response = await axiosService({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${variables.services.flutterwave.raveSecretApi}`
+      },
+      url: `${variables.services.flutterwave.raveBaseUrl}/v3/payment-plans`,
+      data: {
+        amount,
+        name: plan_name,
+        interval
+      }
+    });
+
+    if (response.data.status === 'success') {
+      return {
+        status: 'success',
+        message: 'Plan created successfully.',
+        data: response.data.data
+      };
+    } else {
+      console.log({ response: response.data });
+      throw new Error('Failed to create payment plan');
+    }
+  } catch (error) {
+    return {
+      status: 'error',
+      message: error.message || error
+    };
+  }
+};
+
+export const initiatePayment = async (payload: InitiatePayment) => {
+  try {
+    const { amount, payment_plan, email, phonenumber } = payload;
+    const tx_ref = crypto.randomBytes(Math.ceil(length / 2)).toString('hex');
+
+    console.log({ tx_ref });
+
+    const response = await axiosService({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${variables.services.flutterwave.raveSecretApi}`
+      },
+      url: `${variables.services.flutterwave.raveBaseUrl}/v3/payments`,
+      data: {
+        tx_ref,
+        amount,
+        currency: 'NGN',
+        redirect_url: 'https://example_company.com/success',
+        payment_plan,
+        customer: {
+          email,
+          phonenumber
+        }
+      }
+    });
+    if (response.data.status === 'success') {
+      return {
+        status: 'success',
+        message: 'Payment initiated successfully.',
+        data: response.data.data
+      };
+    } else {
+      console.log({ response: response.data });
+      throw new Error('Failed to initiate payment');
+    }
+  } catch (error) {
+    return {
+      status: 'error',
+      message: error.message || error
+    };
+  }
+};

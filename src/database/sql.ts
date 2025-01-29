@@ -80,5 +80,7 @@ export const sql = {
       i.id, i.name, i.uom, i.description, i.category, i.allergies, i.class_of_food, i.calories_per_uom, i.is_active;
   `,
   fetchPendingOrders: 'SELECT * FROM orders where status = $1',
-  updateOrderStatusByTransactionRef: 'UPDATE orders SET status = $1, updated_at = $2 WHERE transaction_ref = $3 RETURNING *;'
+  updateOrderStatusByTransactionRef: 'UPDATE orders SET status = $1, updated_at = $2 WHERE transaction_ref = $3 RETURNING *;',
+  createOrder: 'INSERT INTO orders (user_id, start_date, end_date, payment_plan_id, number_of_meals, total_price, code, status) values ($1, $2, $3, $4, $5, $6, $7, $8) returning *',
+  createOrderMeals: 'INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, location, code) values ($1, $2, $3, $4, $5, $6, $7, $8)'
 };

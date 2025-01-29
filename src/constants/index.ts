@@ -6,7 +6,8 @@ export enum SMS_STATUS {
 export enum ORDER_STATUS {
   CREATED = 'created', //-> default
   PENDING = 'pending', //-> payment has been made
-  PAID = 'paid' //->webhook has been sent and payment has been confirmed
+  PAID = 'paid', //->webhook has been sent and payment has been confirmed
+  COMPLETED = 'completed'
 }
 
 export const uoms = [
