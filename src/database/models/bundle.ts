@@ -2,19 +2,13 @@ import pool from '../../config/database.config';
 import { logger } from '../../utilities';
 
 const bundleTable = `
-        DO $$ BEGIN
-          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'meal_category') THEN
-              CREATE TYPE meal_category AS ENUM ('breakfast', 'lunch', 'dinner');
-          END IF;
-        END $$;
-
-        DROP TABLE IF EXISTS bundles CASCADE;
+       DROP TABLE IF EXISTS bundles CASCADE;
         CREATE TABLE bundles (
             id SERIAL PRIMARY KEY NOT NULL,
             admin_id INTEGER,
             name VARCHAR(255) NOT NULL,
             health_impact VARCHAR(255) NOT NULL,
-            category meal_category NOT NULL,
+            category VARCHAR(255) NOT NULL,
             price VARCHAR(50),
             is_active BOOLEAN,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,

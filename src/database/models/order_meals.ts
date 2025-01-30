@@ -6,7 +6,7 @@ const orderExtraTable = `DROP TABLE IF EXISTS order_meals CASCADE;
                 id SERIAL PRIMARY KEY,
                 order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
                 date DATE NOT NULL,
-                category meal_category NOT NULL,
+                category VARCHAR(50) NOT NULL,
                 bundle_id INTEGER REFERENCES bundles(id),
                 quantity INTEGER,
                 delivery_time VARCHAR(50),

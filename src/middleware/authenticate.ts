@@ -50,6 +50,7 @@ export const authenticate = () => {
 
 export const authenticateAdmin = () => {
   return async (req: Request, res: Response, next: NextFunction) => {
+    console.log("helllooo====>>>")
     const { authorization } = req.headers;
 
     if (!authorization) {
@@ -72,6 +73,7 @@ export const authenticateAdmin = () => {
 
       delete admin.password;
       res.locals.admin = admin;
+      console.log("pass====>")
       return next();
     } catch (error) {
       if (error instanceof TokenExpiredError) {

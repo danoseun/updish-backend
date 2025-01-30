@@ -19,6 +19,7 @@ import { userRouter, itemRouter, orderRouter, portalRouter } from './routes';
 import { logger } from './utilities'
 import variables from './variables';
 import { connect } from './config/database.config';
+import { webhookRouter } from './routes/webhook';
 
 // Require Passport midleware - without this your app wont work
 //require('./middleware/passport');
@@ -113,7 +114,7 @@ app.use('/v1', userRouter);
 app.use('/v1', itemRouter);
 app.use('/v1', orderRouter);
 app.use('/v1', portalRouter);
-//app.use('/v1', webhookRouter);
+app.use('/v1', webhookRouter);
 
 app.use(errorMiddleware);
 
@@ -133,7 +134,7 @@ app.use(
     _next: express.NextFunction,
   ) => {
     logger.error(`[UNEXPECTED ERROR] => ${err.message}`);
-
+console.log(err)
     return res.status(err.status || 500).send({
       status: "error",
       message: "Internal server error",

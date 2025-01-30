@@ -23,6 +23,7 @@ import { uoms } from '../constants';
 
 export const ItemController = {
   createItem: (): RequestHandler => async (req, res, next) => {
+    console.log("trig====>>")
     const client = await pool.connect();
 
     const adminId = res.locals.admin.id;

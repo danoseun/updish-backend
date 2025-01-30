@@ -13,6 +13,7 @@ orderRouter.get('/orders/details/:id', OrderController.getOrderDetails());
 orderRouter.get('/orders/:code', OrderController.getSalesOrder());
 orderRouter.get('/last-order/:code', authenticate(), OrderController.getLastOrder());
 orderRouter.patch('/update-order', authenticate(), OrderController.updateOrderMeals());
+orderRouter.post('/payment-plans/cancel', authenticate(), OrderController.cancelPaymentPlan())
 
 /** GET /orders
  * /orders?page=1&limit=20

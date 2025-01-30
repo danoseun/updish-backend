@@ -2,18 +2,17 @@ import { RequestHandler } from 'express';
 import pool from '../config/database.config';
 import HttpStatus from 'http-status-codes';
 import { sql } from '../database/sql';
-import { BadRequestError, ConflictError, ResourceNotFoundError } from '../errors';
-import type { Item, ParentItem, Bundle, Order } from '../interfaces';
+import type { Order } from '../interfaces';
 import { generateRandomCode, respond } from '../utilities';
-import { updateOrderStatusByTransactionRef } from '../repository/order';
-import { createPaymentPlan } from '@src/services/flutterwave';
+import { cancelPaymentPlan, createPaymentPlan, initiatePayment } from '@src/services/flutterwave';
+import { ORDER_STATUS } from '@src/constants';
 
 interface LastOrder {
   order: Order;
   meals: any[];
 }
 
-export const getLastOrderService = async (userId: number): Promise<LastOrder | null> => {
+export const getLastOrderService = async (userId: number, status: ORDER_STATUS): Promise<LastOrder | null> => {
   const client = await pool.connect();
 
   try {
@@ -21,17 +20,20 @@ export const getLastOrderService = async (userId: number): Promise<LastOrder | n
     const orderQuery = `
       SELECT * FROM orders
       WHERE user_id = $1
-      AND status = 'completed'
+      AND status = $2
       ORDER BY created_at DESC
       LIMIT 1
     `;
-    const orderResult = await client.query(orderQuery, [userId]);
+
+    const orderResult = await client.query(orderQuery, [userId, status]);
+    console.log({ orderResult });
 
     if (!orderResult.rows.length) {
       return null; // No orders found
     }
 
     const order: Order = orderResult.rows[0];
+    console.log({ order });
 
     // Fetch associated meals for the last created order
     const mealsQuery = `
@@ -90,7 +92,7 @@ export const OrderController = {
 
     //   // Insert into order_meals table
     //   const insertMealQuery = `
-    //         INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, location, code)
+    //         INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, address, code)
     //         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     //         RETURNING id
     //       `;
@@ -103,7 +105,7 @@ export const OrderController = {
     //       meal.bundleId,
     //       meal.quantity,
     //       meal.delivery_time,
-    //       meal.location,
+    //       meal.address,
     //       mealCode
     //     ]);
     //     const orderMealId = mealResult.rows[0].id;
@@ -147,6 +149,8 @@ export const OrderController = {
     try {
       await client.query('BEGIN');
 
+      const user = await client.query(`SELECT email, phone_number FROM users WHERE id = $1`, [userId]);
+
       // Check if user has an active payment plan
       const paymentPlanResult = await client.query(`SELECT * FROM payment_plans WHERE user_id = $1 AND status = 'active'`, [userId]);
 
@@ -174,11 +178,18 @@ export const OrderController = {
         ]);
       }
 
+      const orderCode = generateRandomCode();
+
       // initiate payment for the customer and include payment_plan_id in the payload.
-      // This action will automatically subscribe the customer to the specified payment plan upon successful payment.
+      const initiatePaymentResponse = await initiatePayment({
+        amount: String(mealOrderAmount),
+        payment_plan: paymentPlanId,
+        email: user.rows[0].email,
+        phonenumber: user.rows[0].phone_number,
+        order_code: orderCode
+      });
 
       // Create the order
-      const orderCode = generateRandomCode();
       const orderResult = await client.query(sql.createOrder, [
         userId,
         meals[0].date,
@@ -187,7 +198,7 @@ export const OrderController = {
         meals.length,
         mealOrderAmount,
         orderCode,
-        'created'
+        ORDER_STATUS.CREATED
       ]);
 
       //@ts-ignore
@@ -197,14 +208,23 @@ export const OrderController = {
 
       // Subscribe the user to the payment plan
       await client.query(
-        `INSERT INTO subscriptions (user_id, payment_plan_id, order_id, start_date, end_date, total_price, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [userId, paymentPlanId, orderId, meals[0].date, meals[meals.length - 1].date, mealOrderAmount, 'pending']
+        `INSERT INTO subscriptions (user_id, payment_plan_id, transaction_ref, order_id, start_date, end_date, total_price, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          userId,
+          paymentPlanId,
+          initiatePaymentResponse.transaction_ref,
+          orderId,
+          meals[0].date,
+          meals[meals.length - 1].date,
+          mealOrderAmount,
+          'pending'
+        ]
       );
 
       // Insert meals into `order_meals` table
       const mealQuery = `
-      INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, location, code)
+      INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, address, code)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
       RETURNING id`;
 
@@ -218,10 +238,9 @@ export const OrderController = {
           meal.bundleId,
           meal.quantity,
           meal.delivery_time,
-          meal.location,
+          meal.address,
           mealCode
         ]);
-        console.log({ mealResult });
         const orderMealId = mealResult.rows[0].id;
 
         // Insert extras into order_extras table (if any)
@@ -237,7 +256,7 @@ export const OrderController = {
       }
 
       await client.query('COMMIT');
-      respond(res, { orderId, message: 'Order created successfully' }, HttpStatus.CREATED);
+      respond(res, { orderId, message: 'Order created successfully', payment_link: initiatePaymentResponse.data }, HttpStatus.CREATED);
     } catch (error) {
       await client.query('ROLLBACK');
       console.error('Error creating order:', error);
@@ -390,7 +409,7 @@ export const OrderController = {
       //           om.category AS meal_category,
       //           om.quantity AS meal_quantity,
       //           om.delivery_time,
-      //           om.location,
+      //           om.address,
       //           om.code AS meal_code,
       //           b.id AS bundle_id,
       //           b.name AS bundle_name,
@@ -518,7 +537,7 @@ export const OrderController = {
               om.bundle_id,
               om.quantity,
               om.delivery_time,
-              om.location,
+              om.address,
               om.code,
               JSONB_BUILD_OBJECT(
                   'id', b.id,
@@ -556,7 +575,7 @@ export const OrderController = {
                       'bundle_id', om_cte.bundle_id,
                       'quantity', om_cte.quantity,
                       'delivery_time', om_cte.delivery_time,
-                      'location', om_cte.location,
+                      'address', om_cte.address,
                       'code', om_cte.code,
                       'bundle', om_cte.bundle,
                       'extras', om_cte.extras
@@ -615,7 +634,7 @@ export const OrderController = {
               om.category AS meal_category,
               om.quantity AS meal_quantity,
               om.delivery_time,
-              om.location,
+              om.address,
               om.code AS meal_code,
               b.id AS bundle_id,
               b.name AS bundle_name,
@@ -661,7 +680,7 @@ export const OrderController = {
     const userId = res.locals.user.id;
 
     try {
-      const lastOrder = await getLastOrderService(Number(userId));
+      const lastOrder = await getLastOrderService(Number(userId), ORDER_STATUS.COMPLETED);
 
       if (!lastOrder) {
         return res.status(404).json({ message: 'No orders found for this user' });
@@ -676,7 +695,7 @@ export const OrderController = {
       });
     } catch (error) {
       console.error('Error in someOtherEndpoint:', error);
-      return res.status(500).json({ message: 'Failed to fetch last order' });
+      return respond(res, 'Failed to fetch last order', HttpStatus.BAD_GATEWAY);
     }
   },
 
@@ -696,18 +715,18 @@ export const OrderController = {
       await client.query('BEGIN');
 
       // Fetch active user plan
-      const activePaymentPlanResult = await client.query(`SELECT * from payment_plans WHERE user_id = $1`, [userId]);
+      const activePaymentPlanResult = await client.query(`SELECT * from payment_plans WHERE user_id = $1 AND status = 'active`, [userId]);
 
       if (!activePaymentPlanResult.rows.length) {
-        throw new Error('No active user plan found');
+        return respond(res, { message: 'No active user plan found' }, HttpStatus.BAD_REQUEST);
       }
-      const payment_plan_id = activePaymentPlanResult.rows[0].id;
+      const payment_plan_id = activePaymentPlanResult.rows[0].payment_plan_id;
 
       // Fetch the existing order that has order_meals
-      const previousOrderResult = await getLastOrderService(userId);
+      const previousOrderResult = await getLastOrderService(userId, ORDER_STATUS.COMPLETED);
 
       if (previousOrderResult.meals.length === 0) {
-        return respond(res, 'Order not found', HttpStatus.NOT_FOUND);
+        return respond(res, 'No previous found', HttpStatus.NOT_FOUND);
       }
 
       //we can use the number_of_meals here or the value from meals array
@@ -716,6 +735,26 @@ export const OrderController = {
       // Check meal count
       if (meals.length !== previousOrderMeals.length) {
         return respond(res, `Number of meals must match the original order (${previousOrderMeals.length})`, HttpStatus.BAD_REQUEST);
+      }
+
+      // check that the new order price still matches the payment_plan_amount
+      if (mealOrderAmount !== activePaymentPlanResult.rows[0].amount) {
+        return respond(res, `Order cost should not exceed payment plan`, HttpStatus.BAD_REQUEST);
+      }
+
+      // ensure there is no pending subscription to avoid multiple update
+      const existingPendingSubscription = await client.query(
+        `
+        SELECT * FROM subscriptions 
+        WHERE user_id = $1
+        AND payment_plan_id = $2
+        AND status = 'pending'
+        `,
+        [userId, payment_plan_id]
+      );
+
+      if (existingPendingSubscription.rows.length) {
+        return respond(res, { message: 'You have a pending updated order' }, HttpStatus.CONFLICT);
       }
 
       // create a new order for the week – it is a new order regardless whether it's the same meals as the last order
@@ -731,7 +770,6 @@ export const OrderController = {
         'created'
       ]);
       //@ts-ignore
-
       const orderId = orderResult.rows[0].id;
 
       // create subscription for the new week
@@ -757,7 +795,7 @@ export const OrderController = {
           meal.bundleId,
           meal.quantity,
           meal.delivery_time,
-          meal.location,
+          meal.address,
           mealCode
         ]);
       }
@@ -770,6 +808,40 @@ export const OrderController = {
       next(error);
     } finally {
       client.release();
+    }
+  },
+
+  cancelPaymentPlan: (): RequestHandler => async (req, res) => {
+    try {
+      const userId = res.locals.user.id;
+
+      const existingPaymentPlan = await pool.query(
+        `
+        SELECT * FROM payment_plans WHERE user_id = $1 AND status = 'active'
+      `,
+        [userId]
+      );
+      if (!existingPaymentPlan.rows.length) {
+        return respond(res, { message: 'No active plan for this user' }, HttpStatus.NOT_FOUND);
+      }
+      const cancelPlanResponse = await cancelPaymentPlan(existingPaymentPlan.rows[0].payment_plan_id);
+      console.log({ cancelPlanResponse });
+
+      if (cancelPlanResponse.status === 'success') {
+        await pool.query(
+          `UPDATE payment_plans
+          SET status = 'cancelled'
+          WHERE id = $1
+        `,
+          [existingPaymentPlan.rows[0].id]
+        );
+        return respond(res, { message: 'Payment plan cancelled', data: cancelPlanResponse }, HttpStatus.OK);
+      }
+
+      return respond(res, { message: 'Failed to cancel plan', data: cancelPlanResponse }, HttpStatus.BAD_REQUEST);
+    } catch (error) {
+      console.error('Error in someOtherEndpoint:', error);
+      return respond(res, { message: 'No active plan for this user' }, HttpStatus.BAD_GATEWAY);
     }
   }
 };
@@ -791,7 +863,7 @@ export const OrderController = {
         "bundleId": 3,
         "delivery_time": "7:00 AM - 9:00 AM",
         "quantity": 1,
-        "location": "123 Main St, Springfield",
+        "address": "123 Main St, Springfield",
         "extras": [{"id": 2, "name": "Plantain", "price": 150}],
         "price": 700
       },
@@ -801,7 +873,7 @@ export const OrderController = {
         "bundleId": 4,
         "delivery_time": "1:00 PM - 2:30 PM",
         "quantity": 2,
-        "location": "123 Main St, Springfield",
+        "address": "123 Main St, Springfield",
         "extras": [],
         "price": 1400
       },
@@ -811,7 +883,7 @@ export const OrderController = {
         "bundleId": 5,
         "delivery_time": "6:00 PM - 7:30 PM",
         "quantity": 2,
-        "location": "123 Main St, Springfield",
+        "address": "123 Main St, Springfield",
         "price": 1200
       }
     ]
@@ -861,8 +933,20 @@ export const OrderController = {
  *
  *
  * create endpoint that fetches last customer order and order_meals plus extras if any
- *
- *
- *
- *
+ * 
+ *  CREATE ORDER RES
+  * {
+      "status": "success",
+      "data": {
+          "orderId": 16,
+          "message": "Order created successfully",
+          "payment_link": {
+              "link": "https://checkout-v2.dev-flutterwave.com/v3/hosted/pay/8d0c3f328b58f5d6f394"
+          }
+      },
+      "meta": {}
+  }
+ *  
+  REDIRECT_URL after payment completion
+  https://example_company.com/success?status=successful&tx_ref=TXREF_331273_1738227346167&transaction_id=8355329
  */
