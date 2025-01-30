@@ -4,7 +4,7 @@ import { logger } from '../../utilities';
 const orderExtraTable = `DROP TABLE IF EXISTS order_extras CASCADE;
             CREATE TABLE order_extras (
                 id SERIAL PRIMARY KEY,
-                order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+                order_meal_id INTEGER REFERENCES order_meals(id) ON DELETE CASCADE,
                 extra_name VARCHAR(255),
                 quantity INTEGER NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

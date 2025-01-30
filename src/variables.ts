@@ -50,8 +50,7 @@ const variables = {
       raveSecretApi: process.env.RAVE_SECRET_API,
       raveBaseUrl: process.env.RAVE_BASE_URL
     }
-  },
-  
+  }
 };
 
 export default variables;

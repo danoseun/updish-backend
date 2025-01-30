@@ -1,7 +1,8 @@
 import pool from '../../config/database.config';
 import { logger } from '../../utilities';
 
-const bundleTable = `DROP TABLE IF EXISTS bundles CASCADE;
+const bundleTable = `
+       DROP TABLE IF EXISTS bundles CASCADE;
         CREATE TABLE bundles (
             id SERIAL PRIMARY KEY NOT NULL,
             admin_id INTEGER,

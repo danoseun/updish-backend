@@ -23,6 +23,7 @@ import { uoms } from '../constants';
 
 export const ItemController = {
   createItem: (): RequestHandler => async (req, res, next) => {
+    console.log("trig====>>")
     const client = await pool.connect();
 
     const adminId = res.locals.admin.id;
@@ -31,13 +32,13 @@ export const ItemController = {
       req.body.name,
       req.body.uom,
       req.body.description,
-      req.body.category,
       req.body.allergies,
       req.body.class_of_food,
       req.body.calories_per_uom,
       req.body.parent_item,
       req.body.is_active
     ];
+    console.log({itemParams})
     try {
       await client.query('BEGIN');
 
@@ -62,6 +63,7 @@ export const ItemController = {
               imagesArray.push(images.rows[0]);
             }
           } else {
+              //@ts-ignore
             const imageParams = [newItem.rows[0].id, uploads.public_id, uploads.secure_url];
             images = await client.query(sql.createImagesForItem, imageParams);
             imagesArray.push(images.rows[0]);

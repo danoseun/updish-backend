@@ -10,7 +10,8 @@ const subscriptionTable = `DROP TABLE IF EXISTS subscriptions CASCADE;
             start_date DATE,
             end_date DATE,
             payment_plan_id VARCHAR(50) NOT NULL,
-            status VARCHAR(255) NOT NULL DEFAULT 'created',
+            transaction_ref VARCHAR(35),
+            status VARCHAR(255) NOT NULL DEFAULT 'pending',
             total_price NUMERIC NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

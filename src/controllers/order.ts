@@ -2,19 +2,17 @@ import { RequestHandler } from 'express';
 import pool from '../config/database.config';
 import HttpStatus from 'http-status-codes';
 import { sql } from '../database/sql';
-import { BadRequestError, ConflictError, ResourceNotFoundError } from '../errors';
-import type { Item, ParentItem, Bundle } from '../interfaces';
-import { respond } from '../utilities';
-import { updateOrderStatusByTransactionRef } from '../repository/order';
-
-
+import type { Order } from '../interfaces';
+import { generateRandomCode, respond } from '../utilities';
+import { cancelPaymentPlan, createPaymentPlan, initiatePayment } from '@src/services/flutterwave';
+import { ORDER_STATUS } from '@src/constants';
 
 interface LastOrder {
-  order: any;
+  order: Order;
   meals: any[];
 }
 
-export const getLastOrderService = async (userId: number): Promise<LastOrder | null> => {
+export const getLastOrderService = async (userId: number, status: ORDER_STATUS): Promise<LastOrder | null> => {
   const client = await pool.connect();
 
   try {
@@ -22,16 +20,20 @@ export const getLastOrderService = async (userId: number): Promise<LastOrder | n
     const orderQuery = `
       SELECT * FROM orders
       WHERE user_id = $1
+      AND status = $2
       ORDER BY created_at DESC
       LIMIT 1
     `;
-    const orderResult = await client.query(orderQuery, [userId]);
+
+    const orderResult = await client.query(orderQuery, [userId, status]);
+    console.log({ orderResult });
 
     if (!orderResult.rows.length) {
       return null; // No orders found
     }
 
-    const order = orderResult.rows[0];
+    const order: Order = orderResult.rows[0];
+    console.log({ order });
 
     // Fetch associated meals for the last created order
     const mealsQuery = `
@@ -56,7 +58,7 @@ export const OrderController = {
     // const { userId, meals } = req.body;
     // /**
     //  * if they have ordered before
-    //  * check number of meals and 
+    //  * check number of meals and
     //  * do not allow them choose beyond that
     //  */
 
@@ -90,7 +92,7 @@ export const OrderController = {
 
     //   // Insert into order_meals table
     //   const insertMealQuery = `
-    //         INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, location, code)
+    //         INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, address, code)
     //         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     //         RETURNING id
     //       `;
@@ -103,21 +105,21 @@ export const OrderController = {
     //       meal.bundleId,
     //       meal.quantity,
     //       meal.delivery_time,
-    //       meal.location,
+    //       meal.address,
     //       mealCode
     //     ]);
     //     const orderMealId = mealResult.rows[0].id;
 
     //     // Insert extras into order_extras table (if any)
-    //     if (meal.extras && meal.extras.length > 0) {
-    //       const insertExtrasQuery = `
-    //             INSERT INTO order_extras (order_id, extra_name, quantity)
-    //             VALUES ($1, $2, $3)
-    //           `;
-    //       for (const extra of meal.extras) {
-    //         await client.query(insertExtrasQuery, [orderId, extra.name, meal.quantity]);
-    //       }
-    //     }
+    // if (meal.extras && meal.extras.length > 0) {
+    //   const insertExtrasQuery = `
+    //         INSERT INTO order_extras (order_id, extra_name, quantity)
+    //         VALUES ($1, $2, $3)
+    //       `;
+    //   for (const extra of meal.extras) {
+    //     await client.query(insertExtrasQuery, [orderId, extra.name, meal.quantity]);
+    //   }
+    // }
     //   }
 
     //   await client.query('COMMIT');
@@ -130,124 +132,157 @@ export const OrderController = {
     //   client.release();
     // }
 
-    // const { userId, meals } = req.body;
+    const { userId, meals } = req.body;
 
-    // if (!userId || !meals || !Array.isArray(meals) || meals.length === 0) {
-    //   return respond(res, 'Invalid Request payload', HttpStatus.BAD_REQUEST);
-    // }
+    if (!userId || !meals || !Array.isArray(meals) || meals.length === 0) {
+      return respond(res, 'Invalid Request payload', HttpStatus.BAD_REQUEST);
+    }
 
-    // if (meals.length > 21) {
-    //   return respond(res, 'Number of meals cannot exceed 21', HttpStatus.BAD_REQUEST);
-    // }
+    if (meals.length > 21) {
+      return respond(res, 'Number of meals cannot exceed 21', HttpStatus.BAD_REQUEST);
+    }
 
+    const mealOrderAmount = meals.reduce((sum, meal) => sum + meal.price, 0) as number;
 
-    // const client = await pool.connect();
+    const client = await pool.connect();
 
-    // try {
-    //   await client.query('BEGIN');
+    try {
+      await client.query('BEGIN');
 
-    //   // Check if user has an active payment plan
-    //   const paymentPlanResult = await client.query(`SELECT * FROM payment_plans WHERE user_id = $1 AND status = 'active'`, [userId]);
+      const user = await client.query(`SELECT email, phone_number FROM users WHERE id = $1`, [userId]);
 
-    //   let paymentPlanId: string;
-    //   if (paymentPlanResult.rows.length) {
-    //     // Use existing payment plan
-    //     paymentPlanId = paymentPlanResult.rows[0].payment_plan_id;
-    //   } else {
-    //     // Create new payment plan using Flutterwave API
-    //     const flutterwaveResponse = await createPaymentPlan(placeholderArgs); // This is a separate function to be written.
-    //     paymentPlanId = flutterwaveResponse.id;
+      // Check if user has an active payment plan
+      const paymentPlanResult = await client.query(`SELECT * FROM payment_plans WHERE user_id = $1 AND status = 'active'`, [userId]);
 
-    //     // Save new payment plan in DB
-    //     await client.query(`INSERT INTO payment_plans (user_id, payment_plan_id, amount, interval, status) VALUES ($1, $2, $3, $4, $5)`, [
-    //       userId,
-    //       paymentPlanId,
-    //       meals.reduce((sum, meal) => sum + meal.price, 0),
-    //       'weekly',
-    //       'active'
-    //     ]);
-    //   }
+      let paymentPlanId: string;
+      if (paymentPlanResult.rows.length) {
+        // Use existing payment plan
+        paymentPlanId = paymentPlanResult.rows[0].payment_plan_id;
+      } else {
+        // Create new payment plan using Flutterwave API
+        const flutterwaveResponse = await createPaymentPlan(mealOrderAmount, 'updish_plan', 'hourly'); // This is a separate function to be written.
 
-      //subscribe user to created payment plan
-//       const response = await got.post("https://api.flutterwave.com/v3/payments", {
-//     headers: {
-//         Authorization: `Bearer ${process.env.FLW_SECRET_KEY}`
-//     },
-//     json: {
-//         // other fields...
-//         payment_plan: 3807,
-//     }
-// });
+        if (flutterwaveResponse.status === 'success') {
+          paymentPlanId = flutterwaveResponse.data.id;
+        } else if (flutterwaveResponse.status === 'error') {
+          return respond(res, flutterwaveResponse.message, HttpStatus.EXPECTATION_FAILED);
+        }
 
+        // Save new payment plan in DB
+        await client.query(`INSERT INTO payment_plans (user_id, payment_plan_id, amount, interval, status) VALUES ($1, $2, $3, $4, $5)`, [
+          userId,
+          paymentPlanId,
+          mealOrderAmount,
+          'hourly',
+          'active'
+        ]);
+      }
 
-      // start date should be two days from current date
+      const orderCode = generateRandomCode();
+
+      // initiate payment for the customer and include payment_plan_id in the payload.
+      const initiatePaymentResponse = await initiatePayment({
+        amount: String(mealOrderAmount),
+        payment_plan: paymentPlanId,
+        email: user.rows[0].email,
+        phonenumber: user.rows[0].phone_number,
+        order_code: orderCode
+      });
+
+      // Create the order
+      const orderResult = await client.query(sql.createOrder, [
+        userId,
+        meals[0].date,
+        meals[meals.length - 1].date,
+        paymentPlanId,
+        meals.length,
+        mealOrderAmount,
+        orderCode,
+        ORDER_STATUS.CREATED
+      ]);
+
+      //@ts-ignore
+      const orderId = orderResult.rows[0].id;
+
+      console.log({ orderId });
+
       // Subscribe the user to the payment plan
-    //   await client.query(
-    //     `INSERT INTO subscriptions (user_id, payment_plan_id, start_date, end_date, total_price, status)
-    //    VALUES ($1, $2, $3, $4, $5, $6)`,
-    //     [userId, paymentPlanId, meals[0].date, meals[meals.length - 1].date, meals.reduce((sum, meal) => sum + meal.price, 0), 'created']
-    //   );
+      await client.query(
+        `INSERT INTO subscriptions (user_id, payment_plan_id, transaction_ref, order_id, start_date, end_date, total_price, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          userId,
+          paymentPlanId,
+          initiatePaymentResponse.transaction_ref,
+          orderId,
+          meals[0].date,
+          meals[meals.length - 1].date,
+          mealOrderAmount,
+          'pending'
+        ]
+      );
 
-    //   // Create the order
-    //   const orderQuery = `
-    //   INSERT INTO orders (user_id, start_date, end_date, payment_plan_id, number_of_meals, total_price, code, status, transaction_ref)
-    //   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    //   RETURNING id`;
-    //   const orderCode = Math.floor(100000 + Math.random() * 900000).toString();
-    //   const orderResult = await client.query(orderQuery, [
-    //     userId,
-    //     meals[0].date,
-    //     meals[meals.length - 1].date,
-    //     paymentPlanId,
-    //     meals.length,
-    //     meals.reduce((sum, meal) => sum + meal.price, 0),
-    //     orderCode,
-    //     'created'
-    //   ]);
-    //   const orderId = orderResult.rows[0].id;
+      // Insert meals into `order_meals` table
+      const mealQuery = `
+      INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, address, code)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+      RETURNING id`;
 
-    //   // Insert meals into `order_meals` table
-    //   const mealQuery = `
-    //   INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, address, code)
-    //   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
-    //   for (const meal of meals) {
-    //     const mealCode = Math.floor(100000 + Math.random() * 900000).toString();
-    //     await client.query(mealQuery, [orderId, meal.date, meal.category, meal.bundleId, meal.quantity, meal.delivery_time, meal.address, mealCode]);
-    //   }
+      console.log({ meals });
+      for (const meal of meals) {
+        const mealCode = generateRandomCode();
+        const mealResult = await client.query(mealQuery, [
+          orderId,
+          meal.date,
+          meal.category,
+          meal.bundleId,
+          meal.quantity,
+          meal.delivery_time,
+          meal.address,
+          mealCode
+        ]);
+        const orderMealId = mealResult.rows[0].id;
 
-    //   await client.query('COMMIT');
-    //   respond(res, { orderId, message: 'Order created successfully' }, HttpStatus.CREATED);
-    // } catch (error) {
-    //   await client.query('ROLLBACK');
-    //   console.error('Error creating order:', error);
-    //   next(error);
-    // } finally {
-    //   client.release();
-    // }
+        // Insert extras into order_extras table (if any)
+        if (meal.extras && meal.extras.length > 0) {
+          const insertExtrasQuery = `
+                INSERT INTO order_extras (order_meal_id, extra_name, quantity)
+                VALUES ($1, $2, $3)
+              `;
+          for (const extra of meal.extras) {
+            await client.query(insertExtrasQuery, [orderMealId, extra.name, meal.quantity]);
+          }
+        }
+      }
+
+      await client.query('COMMIT');
+      respond(res, { orderId, message: 'Order created successfully', payment_link: initiatePaymentResponse.data }, HttpStatus.CREATED);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Error creating order:', error);
+      next(error);
+    } finally {
+      client.release();
+    }
   },
 
   demandSummary: (): RequestHandler => async (req, res, next) => {
     try {
       const { singleDate, startDate, endDate, deliveryTime } = req.query;
 
-    if (!singleDate && (!startDate || !endDate)) {
-      return respond(res, 'Either singleDate or startDate and endDate are required', HttpStatus.BAD_REQUEST);
-    }
+      if (!singleDate && (!startDate || !endDate)) {
+        return respond(res, 'Either singleDate or startDate and endDate are required', HttpStatus.BAD_REQUEST);
+      }
 
-    interface FilterParams {
-      singleDate?: string;
-      startDate?: string;
-      endDate?: string;
-      deliveryTime?: string;
-    }
-    
-    const getFilteredBundleItemQuantities = async ({
-      singleDate,
-      startDate,
-      endDate,
-      deliveryTime,
-    }: FilterParams) => {
-      const query = `
+      interface FilterParams {
+        singleDate?: string;
+        startDate?: string;
+        endDate?: string;
+        deliveryTime?: string;
+      }
+
+      const getFilteredBundleItemQuantities = async ({ singleDate, startDate, endDate, deliveryTime }: FilterParams) => {
+        const query = `
         SELECT 
             i.name AS item_name,
             SUM(bi.qty * om.quantity) AS total_quantity
@@ -273,136 +308,318 @@ export const OrderController = {
         ORDER BY 
             total_quantity DESC;
       `;
-    
-      const params = [singleDate || null, startDate || null, endDate || null, deliveryTime || null];
-      const result = await pool.query(query, params);
-      return result.rows;
-    };
 
-    const data = await getFilteredBundleItemQuantities({
-      singleDate: singleDate as string | undefined,
-      startDate: startDate as string | undefined,
-      endDate: endDate as string | undefined,
-      deliveryTime: deliveryTime as string | undefined,
-    });
+        const params = [singleDate || null, startDate || null, endDate || null, deliveryTime || null];
+        const result = await pool.query(query, params);
+        return result.rows;
+      };
 
-    return respond(res, {message: 'Demand summary retrieved successfully', data }, HttpStatus.OK);
+      const data = await getFilteredBundleItemQuantities({
+        singleDate: singleDate as string | undefined,
+        startDate: startDate as string | undefined,
+        endDate: endDate as string | undefined,
+        deliveryTime: deliveryTime as string | undefined
+      });
+
+      return respond(res, { message: 'Demand summary retrieved successfully', data }, HttpStatus.OK);
     } catch (error) {
       next(error);
     }
   },
-  
- 
+
+  /**
+   *
+   * fetch all weekly orders
+   */
   getOrders: (): RequestHandler => async (req, res, next) => {
+    try {
+      const { date, startDate, endDate, page, limit, status } = req.query;
 
-      try {
-        const { date, startDate, endDate, page, limit } = req.query;
-    
-        const pageNumber = parseInt(page as string, 10) || 1;
-        const pageSize = parseInt(limit as string, 10) || 10;
+      const pageNumber = parseInt(page as string, 10) || 1;
+      const pageSize = parseInt(limit as string, 10) || 10;
 
-        const getOrdersWithPagination = async (
-          date?: string,
-          startDate?: string,
-          endDate?: string,
-          page = 1,
-          limit = 10
-        ) => {
-          const offset = (page - 1) * limit;
-        
-          const query = `
-            SELECT 
-                o.id AS order_id,
-                o.start_date,
-                o.end_date,
-                o.status,
-                o.total_price,
-                o.code AS order_code,
-                o.created_at AS order_created_at,
-                o.updated_at AS order_updated_at,
-                om.id AS order_meal_id,
-                om.date AS meal_date,
-                om.category AS meal_category,
-                om.quantity AS meal_quantity,
-                om.delivery_time,
-                om.location,
-                om.code AS meal_code,
-                b.id AS bundle_id,
-                b.name AS bundle_name,
-                b.health_impact AS bundle_health_impact,
-                bi.item AS item_id,
-                i.name AS item_name,
-                bi.qty AS item_quantity_per_bundle,
-                u.id AS user_id,
-                u.first_name AS customer_first_name,
-                u.last_name AS customer_last_name,
-                u.email AS customer_email,
-                u.phone_number AS customer_phone_number
-            FROM 
-                orders o
-            JOIN 
-                users u ON o.user_id = u.id
-            JOIN 
-                order_meals om ON o.id = om.order_id
-            JOIN 
-                bundles b ON om.bundle_id = b.id
-            JOIN 
-                bundle_items bi ON b.id = bi.bundle_id
-            JOIN 
-                items i ON bi.item = i.id
-            WHERE 
-                ($1::DATE IS NULL OR om.date = $1::DATE)
-                AND ($2::DATE IS NULL OR om.date BETWEEN $2::DATE AND $3::DATE)
-            ORDER BY 
-                o.created_at DESC
-            LIMIT $4 OFFSET $5;
-          `;
-        
-          const params = [date || null, startDate || null, endDate || null, limit, offset];
-          const result = await pool.query(query, params);
-        
-          // Count total rows for pagination metadata
-          const countQuery = `
-            SELECT COUNT(*) AS total
-            FROM orders o
-            JOIN order_meals om ON o.id = om.order_id
-            WHERE 
-                ($1::DATE IS NULL OR om.date = $1::DATE)
-                AND ($2::DATE IS NULL OR om.date BETWEEN $2::DATE AND $3::DATE);
-          `;
-          const countResult = await pool.query(countQuery, [date || null, startDate || null, endDate || null]);
-          const total = parseInt(countResult.rows[0].total, 10);
-        
-          return {
-            data: result.rows,
-            total,
-            page,
-            totalPages: Math.ceil(total / limit),
-          };
+      const getOrdersWithPaginations = async (status: string, startDate?: string, endDate?: string, page = 1, limit = 10) => {
+        const offset = (page - 1) * limit;
+
+        const queryParams: (string | number)[] = [];
+        let baseQuery = `FROM orders o WHERE 1=1`;
+
+        // Add status filter if provided
+        if (status) {
+          baseQuery += ` AND status = $${queryParams.length + 1}`;
+          queryParams.push(status as string);
+        }
+
+        // Handle date filters
+        const start_date = startDate || new Date().toISOString().split('T')[0]; // Default to today
+        const end_date = endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Default to 7 days ahead
+
+        baseQuery += ` AND (start_date >= $${queryParams.length + 1} AND end_date <= $${queryParams.length + 2})`;
+        queryParams.push(start_date, end_date);
+
+        console.log({ queryParams });
+
+        // Construct countQuery
+        const countQuery = `SELECT COUNT(*) ${baseQuery}`;
+
+        const dataQuery = `
+        SELECT
+        o.id AS order_id,
+        o.start_date,
+        o.end_date,
+        o.status,
+        o.total_price,
+        o.code AS order_code,
+        o.created_at AS order_created_at,
+        o.updated_at AS order_updated_at 
+        ${baseQuery}
+        ORDER BY created_at DESC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
+        `;
+        queryParams.push(pageSize, offset);
+
+        // Execute queries
+        const countResult = await pool.query(countQuery, queryParams.slice(0, queryParams.length - 2)); // Remove LIMIT and OFFSET for countQuery
+        const { rows } = await pool.query(dataQuery, queryParams);
+
+        const totalRecords = parseInt(countResult.rows[0].count, 10);
+
+        return {
+          data: rows,
+          totalRecords,
+          page,
+          totalPages: Math.ceil(totalRecords / limit)
         };
-    
-        const { data, total, totalPages } = await getOrdersWithPagination(
-          date as string | undefined,
-          startDate as string | undefined,
-          endDate as string | undefined,
-          pageNumber,
-          pageSize
-        );
-        return respond(res, { message: 'Orders retrieved successfully', data, total, page: pageNumber, totalPages }, HttpStatus.OK);
-      } catch (error) {
-        console.error("Error fetching paginated orders:", error);
-        next(error);
-      }
+      };
+
+      // const getOrdersWithPagination = async (date?: string, startDate?: string, endDate?: string, page = 1, limit = 10) => {
+      //   const offset = (page - 1) * limit;
+
+      //   const query = `
+      //       SELECT
+      //           o.id AS order_id,
+      //           o.start_date,
+      //           o.end_date,
+      //           o.status,
+      //           o.total_price,
+      //           o.code AS order_code,
+      //           o.created_at AS order_created_at,
+      //           o.updated_at AS order_updated_at,
+      //           om.id AS order_meal_id,
+      //           om.date AS meal_date,
+      //           om.category AS meal_category,
+      //           om.quantity AS meal_quantity,
+      //           om.delivery_time,
+      //           om.address,
+      //           om.code AS meal_code,
+      //           b.id AS bundle_id,
+      //           b.name AS bundle_name,
+      //           b.health_impact AS bundle_health_impact,
+      //           bi.item AS item_id,
+      //           i.name AS item_name,
+      //           bi.qty AS item_quantity_per_bundle,
+      //           u.id AS user_id,
+      //           u.first_name AS customer_first_name,
+      //           u.last_name AS customer_last_name,
+      //           u.email AS customer_email,
+      //           u.phone_number AS customer_phone_number
+      //       FROM
+      //           orders o
+      //       JOIN
+      //           users u ON o.user_id = u.id
+      //       JOIN
+      //           order_meals om ON o.id = om.order_id
+      //       JOIN
+      //           bundles b ON om.bundle_id = b.id
+      //       JOIN
+      //           bundle_items bi ON b.id = bi.bundle_id
+      //       JOIN
+      //           items i ON bi.item = i.id
+      //       WHERE
+      //           ($1::DATE IS NULL OR om.date = $1::DATE)
+      //           AND ($2::DATE IS NULL OR om.date BETWEEN $2::DATE AND $3::DATE)
+      //       ORDER BY
+      //           o.created_at DESC
+      //       LIMIT $4 OFFSET $5;
+      //     `;
+
+      //   const query1 = `SELECT
+      //     o.id AS order_id,
+      //     o.start_date,
+      //     o.end_date,
+      //     o.status,
+      //     o.total_price,
+      //     o.code AS order_code,
+      //     o.created_at AS order_created_at,
+      //     o.updated_at AS order_updated_at,
+
+      //     WHERE
+      //           ($1::DATE IS NULL)
+      //       ORDER BY
+      //           o.created_at DESC
+      //       LIMIT $2 OFFSET $3;
+      //     `;
+
+      //   const params1 = [date || null, limit, offset];
+      //   const params = [date || null, startDate || null, endDate || null, limit, offset];
+      //   const result = await pool.query(query, params);
+
+      //   // Count total rows for pagination metadata
+      //   const countQuery = `
+      //       SELECT COUNT(*) AS total
+      //       FROM orders o
+      //       JOIN order_meals om ON o.id = om.order_id
+      //       WHERE
+      //           ($1::DATE IS NULL OR om.date = $1::DATE)
+      //           AND ($2::DATE IS NULL OR om.date BETWEEN $2::DATE AND $3::DATE);
+      //     `;
+      //   const countResult = await pool.query(countQuery, [date || null, startDate || null, endDate || null]);
+      //   const total = parseInt(countResult.rows[0].total, 10);
+
+      //   return {
+      //     data: result.rows,
+      //     total,
+      //     page,
+      //     totalPages: Math.ceil(total / limit)
+      //   };
+      // };
+
+      const { data, totalRecords, totalPages } = await getOrdersWithPaginations(
+        status as string | undefined,
+        startDate as string | undefined,
+        endDate as string | undefined,
+        pageNumber,
+        pageSize
+      );
+      return respond(res, { message: 'Orders retrieved successfully', data, totalRecords, page: pageNumber, totalPages }, HttpStatus.OK);
+    } catch (error) {
+      console.error('Error fetching paginated orders:', error);
+      next(error);
+    }
   },
 
-   /**
-   * 
+  /**
+   *
+   * fetch details for an order (weekly order)
+   */
+  getOrderDetails: (): RequestHandler => async (req, res, next) => {
+    try {
+      const order_id = req.params.id;
+      const query = `
+      -- Step 1: Aggregate Items per Bundle
+      WITH bundle_items_cte AS (
+          SELECT 
+              b.id AS bundle_id,
+              JSONB_AGG(
+                  DISTINCT JSONB_BUILD_OBJECT(
+                      'id', i.id,
+                      'name', i.name,
+                      'uom', i.uom,
+                      'description', i.description,
+                      'allergies', i.allergies,
+                      'class_of_food', i.class_of_food,
+                      'calories_per_uom', i.calories_per_uom,
+                      'qty', bi.qty
+                  )
+              ) AS items
+          FROM bundles b
+          LEFT JOIN bundle_items bi ON b.id = bi.bundle_id
+          LEFT JOIN items i ON bi.item = i.id
+          GROUP BY b.id
+      ),
+      
+      -- Step 2: Attach Bundles to Order Meals
+      order_meals_cte AS (
+          SELECT 
+              om.id AS order_meal_id,
+              om.order_id,
+              om.date,
+              om.category,
+              om.bundle_id,
+              om.quantity,
+              om.delivery_time,
+              om.address,
+              om.code,
+              JSONB_BUILD_OBJECT(
+                  'id', b.id,
+                  'name', b.name,
+                  'category', b.category,
+                  'price', b.price,
+                  'items', COALESCE(bi_cte.items, '[]')
+              ) AS bundle,
+              COALESCE(
+                  JSONB_AGG(
+                      DISTINCT JSONB_BUILD_OBJECT(
+                          'id', oe.id,
+                          'extra_name', oe.extra_name,
+                          'quantity', oe.quantity
+                      )
+                  ) FILTER (WHERE oe.id IS NOT NULL),
+                  '[]'
+              ) AS extras
+          FROM order_meals om
+          LEFT JOIN bundles b ON om.bundle_id = b.id
+          LEFT JOIN bundle_items_cte bi_cte ON b.id = bi_cte.bundle_id
+          LEFT JOIN order_extras oe ON om.id = oe.order_meal_id
+          GROUP BY om.id, b.id, bi_cte.items
+      ),
+      
+      -- Step 3: Aggregate Order Meals for Each Order
+      orders_cte AS (
+          SELECT 
+              o.*,
+              JSONB_AGG(
+                  JSONB_BUILD_OBJECT(
+                      'id', om_cte.order_meal_id,
+                      'date', om_cte.date,
+                      'category', om_cte.category,
+                      'bundle_id', om_cte.bundle_id,
+                      'quantity', om_cte.quantity,
+                      'delivery_time', om_cte.delivery_time,
+                      'address', om_cte.address,
+                      'code', om_cte.code,
+                      'bundle', om_cte.bundle,
+                      'extras', om_cte.extras
+                  )
+              ) AS order_meals
+          FROM orders o
+          LEFT JOIN order_meals_cte om_cte ON o.id = om_cte.order_id
+          GROUP BY o.id
+      )
+      
+      -- Step 4: Join Orders with Users
+      SELECT 
+          o_cte.*,
+          JSONB_BUILD_OBJECT(
+              'id', u.id,
+              'name', u.first_name,
+              'email', u.email
+          ) AS user
+      FROM orders_cte o_cte
+      INNER JOIN users u ON o_cte.user_id = u.id
+      WHERE o_cte.id = $1;
+      
+      `;
+      const { rows } = await pool.query(query, [order_id]);
+
+      if (rows.length === 0) {
+        return respond(res, { message: 'Order details not found' }, HttpStatus.NOT_FOUND);
+      }
+
+      return respond(res, { message: 'Order details retrieved successfully', data: rows[0] }, HttpStatus.OK);
+    } catch (error) {
+      console.error('Error fetching order details:', error);
+      next(error);
+    }
+  },
+
+  /**
+   *
    * fetch a single order inlcuding oder meals and possible attachments
    */
   getSalesOrder: (): RequestHandler => async (req, res, next) => {
     try {
       const { code } = req.params;
-  
+
       if (!code) {
         return respond(res, 'Order code is required', HttpStatus.BAD_REQUEST);
       }
@@ -417,7 +634,7 @@ export const OrderController = {
               om.category AS meal_category,
               om.quantity AS meal_quantity,
               om.delivery_time,
-              om.location,
+              om.address,
               om.code AS meal_code,
               b.id AS bundle_id,
               b.name AS bundle_name,
@@ -441,111 +658,193 @@ export const OrderController = {
         const result = await pool.query(query, params);
         return result.rows;
       };
-  
+
       const orderDetails = await getOrderDetailsByCode(code);
-  
+
       if (orderDetails.length === 0) {
         return respond(res, 'Order not found', HttpStatus.NOT_FOUND);
       }
 
       return respond(res, { message: 'Order details retrieved successfully', data: orderDetails }, HttpStatus.OK);
     } catch (error) {
-      console.error("Error fetching order details:", error);
+      console.error('Error fetching order details:', error);
       next(error);
     }
   },
 
   /**
-   * 
+   *
    * @returns last created order with order meals
    */
   getLastOrder: (): RequestHandler => async (req, res) => {
-    const userId  = res.locals.user.id;
+    const userId = res.locals.user.id;
 
-  try {
-    const lastOrder = await getLastOrderService(Number(userId));
+    try {
+      const lastOrder = await getLastOrderService(Number(userId), ORDER_STATUS.COMPLETED);
 
-    if (!lastOrder) {
-      return res.status(404).json({ message: 'No orders found for this user' });
+      if (!lastOrder) {
+        return res.status(404).json({ message: 'No orders found for this user' });
+      }
+
+      // Perform additional logic with the lastOrder data
+      console.log('Last order details:', lastOrder);
+
+      return res.status(200).json({
+        message: 'Successfully fetched last order in other context',
+        lastOrder
+      });
+    } catch (error) {
+      console.error('Error in someOtherEndpoint:', error);
+      return respond(res, 'Failed to fetch last order', HttpStatus.BAD_GATEWAY);
+    }
+  },
+
+  updateOrderMeals: (): RequestHandler => async (req, res, next) => {
+    const userId = res.locals.user.id;
+    const { code, meals } = req.body;
+
+    if (!meals || !Array.isArray(meals) || meals.length === 0) {
+      return respond(res, 'Invalid meals payload', HttpStatus.BAD_REQUEST);
     }
 
-    // Perform additional logic with the lastOrder data
-    console.log('Last order details:', lastOrder);
+    const mealOrderAmount = meals.reduce((sum, meal) => sum + meal.price, 0) as number;
 
-    return res.status(200).json({
-      message: 'Successfully fetched last order in other context',
-      lastOrder,
-    });
-  } catch (error) {
-    console.error('Error in someOtherEndpoint:', error);
-    return res.status(500).json({ message: 'Failed to fetch last order' });
-  }
-},
+    const client = await pool.connect();
 
-updateOrderMeals: (): RequestHandler => async (req, res, next) => {
-  const userId = res.locals.user.id;
-  const { code, meals } = req.body;
+    try {
+      await client.query('BEGIN');
 
-  if (!meals || !Array.isArray(meals) || meals.length === 0) {
-    return respond(res, 'Invalid meals payload', HttpStatus.BAD_REQUEST);
-  }
+      // Fetch active user plan
+      const activePaymentPlanResult = await client.query(`SELECT * from payment_plans WHERE user_id = $1 AND status = 'active`, [userId]);
 
-  const client = await pool.connect();
+      if (!activePaymentPlanResult.rows.length) {
+        return respond(res, { message: 'No active user plan found' }, HttpStatus.BAD_REQUEST);
+      }
+      const payment_plan_id = activePaymentPlanResult.rows[0].payment_plan_id;
 
-  try {
-    await client.query('BEGIN');
+      // Fetch the existing order that has order_meals
+      const previousOrderResult = await getLastOrderService(userId, ORDER_STATUS.COMPLETED);
 
-    // Fetch the existing order that has order_meals
-    const previousOrderResult = await getLastOrderService(userId)
+      if (previousOrderResult.meals.length === 0) {
+        return respond(res, 'No previous found', HttpStatus.NOT_FOUND);
+      }
 
-    if (previousOrderResult.meals.length === 0) {
-      return respond(res, 'Order not found', HttpStatus.NOT_FOUND);
-    }
+      //we can use the number_of_meals here or the value from meals array
+      const previousOrderMeals = previousOrderResult.meals;
 
-    //we can use the number_of_meals here or the value from meals array
-    const previousOrder = previousOrderResult.meals;
+      // Check meal count
+      if (meals.length !== previousOrderMeals.length) {
+        return respond(res, `Number of meals must match the original order (${previousOrderMeals.length})`, HttpStatus.BAD_REQUEST);
+      }
 
-    // Check meal count
-    if (meals.length !== previousOrder.length) {
-      return respond(
-        res,
-        `Number of meals must match the original order (${previousOrder.length})`,
-        HttpStatus.BAD_REQUEST
+      // check that the new order price still matches the payment_plan_amount
+      if (mealOrderAmount !== activePaymentPlanResult.rows[0].amount) {
+        return respond(res, `Order cost should not exceed payment plan`, HttpStatus.BAD_REQUEST);
+      }
+
+      // ensure there is no pending subscription to avoid multiple update
+      const existingPendingSubscription = await client.query(
+        `
+        SELECT * FROM subscriptions 
+        WHERE user_id = $1
+        AND payment_plan_id = $2
+        AND status = 'pending'
+        `,
+        [userId, payment_plan_id]
       );
-    }
 
+      if (existingPendingSubscription.rows.length) {
+        return respond(res, { message: 'You have a pending updated order' }, HttpStatus.CONFLICT);
+      }
 
-    // Insert updated meals
-
-    // we can query using the code to find the order_id for use here
-    const insertMealQuery = `
-      INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, location, code)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
-    for (const meal of meals) {
-      const mealCode = Math.floor(100000 + Math.random() * 900000).toString();
-      await client.query(insertMealQuery, [
-        //newOrder.id,
-        meal.date,
-        meal.category,
-        meal.bundleId,
-        meal.quantity,
-        meal.delivery_time,
-        meal.location,
-        mealCode,
+      // create a new order for the week – it is a new order regardless whether it's the same meals as the last order
+      const orderCode = generateRandomCode();
+      const orderResult = await client.query(sql.createOrder, [
+        userId,
+        meals[0].date,
+        meals[meals.length - 1].date,
+        previousOrderResult.order.payment_plan_id,
+        meals.length,
+        mealOrderAmount,
+        orderCode,
+        'created'
       ]);
-    }
+      //@ts-ignore
+      const orderId = orderResult.rows[0].id;
 
-    await client.query('COMMIT');
-    respond(res, { message: 'Order meals updated successfully' }, HttpStatus.OK);
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error updating order meals:', error);
-    next(error);
-  } finally {
-    client.release();
+      // create subscription for the new week
+      //@ts-ignore
+      const startDate = new Date(orderResult.rows[0].start_date);
+      const newStartDate = new Date(startDate.setDate(startDate.getDate() + 7));
+      const newEndDate = new Date(newStartDate);
+      newEndDate.setDate(newEndDate.getDate() + 7);
+
+      await client.query(
+        `INSERT INTO subscriptions (user_id, order_id, start_date, end_date, payment_plan_id, total_price, status)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [userId, orderId, newStartDate, newEndDate, payment_plan_id, mealOrderAmount, 'pending']
+      );
+
+      // Insert updated meals
+      for (const meal of meals) {
+        const mealCode = generateRandomCode();
+        await client.query(sql.createOrderMeals, [
+          orderId,
+          meal.date,
+          meal.category,
+          meal.bundleId,
+          meal.quantity,
+          meal.delivery_time,
+          meal.address,
+          mealCode
+        ]);
+      }
+
+      await client.query('COMMIT');
+      respond(res, { message: 'Order meals updated successfully' }, HttpStatus.OK);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Error updating order meals:', error);
+      next(error);
+    } finally {
+      client.release();
+    }
+  },
+
+  cancelPaymentPlan: (): RequestHandler => async (req, res) => {
+    try {
+      const userId = res.locals.user.id;
+
+      const existingPaymentPlan = await pool.query(
+        `
+        SELECT * FROM payment_plans WHERE user_id = $1 AND status = 'active'
+      `,
+        [userId]
+      );
+      if (!existingPaymentPlan.rows.length) {
+        return respond(res, { message: 'No active plan for this user' }, HttpStatus.NOT_FOUND);
+      }
+      const cancelPlanResponse = await cancelPaymentPlan(existingPaymentPlan.rows[0].payment_plan_id);
+      console.log({ cancelPlanResponse });
+
+      if (cancelPlanResponse.status === 'success') {
+        await pool.query(
+          `UPDATE payment_plans
+          SET status = 'cancelled'
+          WHERE id = $1
+        `,
+          [existingPaymentPlan.rows[0].id]
+        );
+        return respond(res, { message: 'Payment plan cancelled', data: cancelPlanResponse }, HttpStatus.OK);
+      }
+
+      return respond(res, { message: 'Failed to cancel plan', data: cancelPlanResponse }, HttpStatus.BAD_REQUEST);
+    } catch (error) {
+      console.error('Error in someOtherEndpoint:', error);
+      return respond(res, { message: 'No active plan for this user' }, HttpStatus.BAD_GATEWAY);
+    }
   }
-}
-}
+};
 
 /**
  * add dispatch and delivery timestamp to order and its controller
@@ -564,7 +863,7 @@ updateOrderMeals: (): RequestHandler => async (req, res, next) => {
         "bundleId": 3,
         "delivery_time": "7:00 AM - 9:00 AM",
         "quantity": 1,
-        "location": "123 Main St, Springfield",
+        "address": "123 Main St, Springfield",
         "extras": [{"id": 2, "name": "Plantain", "price": 150}],
         "price": 700
       },
@@ -574,7 +873,7 @@ updateOrderMeals: (): RequestHandler => async (req, res, next) => {
         "bundleId": 4,
         "delivery_time": "1:00 PM - 2:30 PM",
         "quantity": 2,
-        "location": "123 Main St, Springfield",
+        "address": "123 Main St, Springfield",
         "extras": [],
         "price": 1400
       },
@@ -584,7 +883,7 @@ updateOrderMeals: (): RequestHandler => async (req, res, next) => {
         "bundleId": 5,
         "delivery_time": "6:00 PM - 7:30 PM",
         "quantity": 2,
-        "location": "123 Main St, Springfield",
+        "address": "123 Main St, Springfield",
         "price": 1200
       }
     ]
@@ -592,14 +891,14 @@ updateOrderMeals: (): RequestHandler => async (req, res, next) => {
  */
 /**
  * fetch user last ordered meals
- * (the above will be useful for users that were debited 
+ * (the above will be useful for users that were debited
  * but did not place an order or for others as well)
- * 
+ *
  * notify users 48hrs and 24hrs to the end of subsription
- * 
+ *
  * user can pause subscription(won't be charged for the next week)
  * once there's a pause request, we remove them from the plan
- * 
+ *
  * user can continue paused subscription
  */
 
@@ -611,33 +910,43 @@ updateOrderMeals: (): RequestHandler => async (req, res, next) => {
  * else create one
  * subscribe the user to the payment plan
  * create order, order_meals and co
- * 
- * 
- * create endpoint to receive webhooks from flutterwave
+ *
+ *
+ * create endpoint to receive webhooks from fluuterwave
  * once the webhook is received,
- * if status is successful, 
- * if existing customer order is found with transaction_ref/customer email in webhook,
+ * if status is successful,
+ * if existing customer order is found with transaction_ref in webhook,
  * update the order status to paid
  * update subscription status
  * and notify customer via in-app and email of successful subscription
  * else if no transaction_ref in webhook payload or available transaction_ref from flutterwave is not tied to any order in orders table based on customer email from flutterwave,
- * then create an order with transaction_ref(if available),payment_plan_id, total_price, code, status of paid and start_date should be 7days from start_date of last order 
- * and new end_date should be 7days from new start_date
+ * then create an order with transaction_ref(if available),payment_plan_id, total_price, code, status of paid and start_date should be 7days from start_date of last order
+ * and end_date should be 7days from new start_date
  * also create a subscription
  * send in-app and email notification to customers so they can enter the app and select new set of meals for the weekly subscription
- * 
- * 
+ *
+ *
  * create a new patch endpoint that takes in meals and orderId or code(generated from recurring subscription)
  * before updating the order check if meals sent in are same number of meals as in last order
  * if not same throw an error that number of meals must be same
  * else update the order with number of meals and create the order meals
- * 
- * 
+ *
+ *
  * create endpoint that fetches last customer order and order_meals plus extras if any
  * 
- * - cancel payment plan and 48hr and 24hr notification to customers informing them of subscription renewal
- * 
+ *  CREATE ORDER RES
+  * {
+      "status": "success",
+      "data": {
+          "orderId": 16,
+          "message": "Order created successfully",
+          "payment_link": {
+              "link": "https://checkout-v2.dev-flutterwave.com/v3/hosted/pay/8d0c3f328b58f5d6f394"
+          }
+      },
+      "meta": {}
+  }
  *  
- * 
+  REDIRECT_URL after payment completion
+  https://example_company.com/success?status=successful&tx_ref=TXREF_331273_1738227346167&transaction_id=8355329
  */
-
