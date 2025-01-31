@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import fileUpload from 'express-fileupload';
 import { loginUserSchema } from '../validations/user';
-import { createParentItemSchema, createBundleSchema, toggleItemStatusSchema } from '../validations/item';
+import { createParentItemSchema, createBundleSchema, createItemSchema, toggleItemStatusSchema } from '../validations/item';
 
 import { UserController } from '../controllers/user';
 import { ItemController } from '../controllers/item';
@@ -16,5 +16,6 @@ portalRouter.get('/admin/bundles', authenticateAdmin(), ItemController.getAllBun
 portalRouter.post('/admin/parent-items', authenticateAdmin(), createParentItemSchema, ItemController.createParentItem());
 portalRouter.get('/admin/parent-items', ItemController.fetchAllParentItems());
 portalRouter.get('/admin/uoms', ItemController.fetchAllUoms());
+portalRouter.post('/admin/items', authenticateAdmin(), createItemSchema, ItemController.createItem());
 portalRouter.patch('/admin/items/status/:id', authenticateAdmin(), toggleItemStatusSchema, ItemController.toggleItemStatus());
 
