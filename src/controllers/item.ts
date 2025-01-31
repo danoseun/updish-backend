@@ -241,6 +241,34 @@ export const ItemController = {
     }
   },
 
+  toggleBundleStatus: (): RequestHandler => async (req, res, next) => {
+    const { id } = req.params;
+  
+    if (!id) {
+      return respond(res, 'Bundle ID required', HttpStatus.NOT_FOUND);
+    }
+  
+    try {
+      const query = `
+        UPDATE bundles 
+        SET is_active = NOT is_active 
+        WHERE id = $1 
+        RETURNING id, name, is_active;
+      `;
+  
+      const { rows } = await pool.query(query, [id]);
+  
+      if (rows.length === 0) {
+        return respond(res, 'Bundle not found', HttpStatus.NOT_FOUND);
+      }
+  
+      return respond(res, { message: 'Bundle  status toggled successfully', bundle: rows[0]}, HttpStatus.OK);
+    } catch (error) {
+      console.error('Error toggling bundle status:', error);
+      next(error);
+    }
+  },
+
   getAllBundles: (): RequestHandler => async (req, res, next) => {
     try {
       const { page = 1, pageSize = 10 } = req.query;
