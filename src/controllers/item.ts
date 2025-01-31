@@ -41,6 +41,12 @@ export const ItemController = {
     try {
       await client.query('BEGIN');
 
+      const query = 'SELECT 1 FROM parent_items LIMIT 1';
+      const foundParentItems = await client.query(query);
+      if (!foundParentItems.rowCount) {
+        return respond(res, 'create a parent item to tie this item to before creating an item', HttpStatus.BAD_REQUEST);
+      }
+
       const existingItem = await findItemByName([itemParams[1]] as Partial<Item>);
       if (existingItem?.name === itemParams[1]) {
         respond(res, 'attempt to create an existing item unsuccessful', HttpStatus.CONFLICT);
