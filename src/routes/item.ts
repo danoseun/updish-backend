@@ -8,7 +8,6 @@ export const itemRouter = Router();
 
 //should be authenticated via authenticate()
 itemRouter.get('/items/:id/detailed', findItemByIdDetailedSchema, ItemController.findItemByIdDetailed());
-itemRouter.get('/items', ItemController.fetchAllItems());
 itemRouter.get('/items/category', ItemController.getAllItemsByCategory());
 itemRouter.get('/bundles', ItemController.getActiveBundles());
 itemRouter.get('/bundles/:id', ItemController.getBundleById());

@@ -18,4 +18,5 @@ portalRouter.get('/admin/parent-items', ItemController.fetchAllParentItems());
 portalRouter.get('/admin/uoms', ItemController.fetchAllUoms());
 portalRouter.post('/admin/items', authenticateAdmin(), createItemSchema, ItemController.createItem());
 portalRouter.patch('/admin/items/status/:id', authenticateAdmin(), toggleItemStatusSchema, ItemController.toggleItemStatus());
+portalRouter.get('/admin/items', ItemController.fetchAllItems());
 
