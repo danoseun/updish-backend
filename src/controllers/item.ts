@@ -169,57 +169,64 @@ export const ItemController = {
 
     try {
       await client.query('BEGIN');
+      //check for item existence before allowing bundle creation
+      const query = 'SELECT 1 FROM items LIMIT 1';
+      const foundItems = await client.query(query);
+      if (!foundItems.rowCount) {
+        return respond(res, 'create an item before creating meal bundles', HttpStatus.BAD_REQUEST);
+      } else {
+        const foundBundle = await client.query('SELECT COUNT(*) FROM bundles WHERE name = $1', [name]);
+        console.log('2', foundBundle);
 
-      const foundBundle = await client.query('SELECT COUNT(*) FROM bundles WHERE name = $1', [name]);
-      console.log('2', foundBundle);
+        if (foundBundle.rows[0].count > 0) {
+          throw new ConflictError('A bundle with this name already exists.');
+        }
 
-      if (foundBundle.rows[0].count > 0) {
-        throw new ConflictError('A bundle with this name already exists.');
-      }
+        const bundleResult = await client.query(
+          'INSERT INTO bundles (admin_id, name, health_impact, category, price, is_active) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+          [adminId, name, health_impact, category, price, is_active]
+        );
+        console.log('3', bundleResult);
+        const bundleId = bundleResult.rows[0].id;
+        //console.log('ITEMS', items);
+        // const items = [
+        //   { "item": 1, "qty": 3 },
+        //   { "item": 2, "qty": 2 },
+        //   { "item": 3, "qty": 1 }
+        // ]
+        const itemPromises = items.map(({ item, qty }) =>
+          client.query('INSERT INTO bundle_items (bundle_id, item, qty) VALUES ($1, $2, $3)', [bundleId, item, qty])
+        );
+        await Promise.all(itemPromises);
 
-      const bundleResult = await client.query(
-        'INSERT INTO bundles (admin_id, name, health_impact, category, price, is_active) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-        [adminId, name, health_impact, category, price, is_active]
-      );
-      console.log('3', bundleResult);
-      const bundleId = bundleResult.rows[0].id;
-      //console.log('ITEMS', items);
-      // const items = [
-      //   { "item": 1, "qty": 3 },
-      //   { "item": 2, "qty": 2 },
-      //   { "item": 3, "qty": 1 }
-      // ]
-      const itemPromises = items.map(({ item, qty }) =>
-        client.query('INSERT INTO bundle_items (bundle_id, item, qty) VALUES ($1, $2, $3)', [bundleId, item, qty])
-      );
-      await Promise.all(itemPromises);
-
-      //create image
-      let images: QueryResult<any>;
-      let imagesArray = [];
-      if (req.files) {
-        //@ts-ignore
-        let uploads = await upload(req.files.image);
-        if (Array.isArray(uploads)) {
+        //create image
+        let images: QueryResult<any>;
+        let imagesArray = [];
+        if (req.files) {
           //@ts-ignore
-          for (let i = 0; i < uploads.length; i++) {
+          let uploads = await upload(req.files.image);
+          if (Array.isArray(uploads)) {
             //@ts-ignore
-            const imageParams = [bundleResult.rows[0].id, uploads[i].public_id, uploads[i].secure_url];
+            for (let i = 0; i < uploads.length; i++) {
+              //@ts-ignore
+              const imageParams = [bundleResult.rows[0].id, uploads[i].public_id, uploads[i].secure_url];
+              images = await client.query(sql.createImagesForBundle, imageParams);
+              imagesArray.push(images.rows[0]);
+            }
+          } else {
+            //@ts-ignore
+            const imageParams = [bundleResult.rows[0].id, uploads.public_id, uploads.secure_url];
             images = await client.query(sql.createImagesForBundle, imageParams);
             imagesArray.push(images.rows[0]);
           }
-        } else {
-          //@ts-ignore
-          const imageParams = [bundleResult.rows[0].id, uploads.public_id, uploads.secure_url];
-          images = await client.query(sql.createImagesForBundle, imageParams);
-          imagesArray.push(images.rows[0]);
         }
-      }
 
-      await client.query('COMMIT');
+        await client.query('COMMIT');
+        removeFolder('tmp');
+        console.log('BUNDLE DATA', { bundle: bundleResult.rows[0], images: imagesArray });
+        respond(res, { message: 'Bundle created successfully', bundle: bundleResult.rows[0], images: imagesArray }, HttpStatus.CREATED);
+      }
       removeFolder('tmp');
-      console.log('BUNDLE DATA', { bundle: bundleResult.rows[0], images: imagesArray });
-      respond(res, { message: 'Bundle created successfully', bundle: bundleResult.rows[0], images: imagesArray }, HttpStatus.CREATED);
     } catch (error) {
       await client.query('ROLLBACK');
       next(error);
@@ -231,11 +238,11 @@ export const ItemController = {
   getAllBundles: (): RequestHandler => async (req, res, next) => {
     try {
       const { page = 1, pageSize = 10 } = req.query;
-  
+
       // Convert query parameters to integers
       const limit = parseInt(pageSize as string, 10);
       const offset = (parseInt(page as string, 10) - 1) * limit;
-  
+
       const query = `
         SELECT 
           b.id AS bundle_id,
@@ -270,11 +277,14 @@ export const ItemController = {
           b.created_at DESC
         LIMIT $1 OFFSET $2;
       `;
-  
+
       const { rows } = await pool.query(query, [limit, offset]);
 
-      respond(res, { message: 'Bundle created successfully', page: parseInt(page as string), pageSize: parseInt(pageSize as string), data: rows }, HttpStatus.CREATED);
-  
+      respond(
+        res,
+        { message: 'Bundle created successfully', page: parseInt(page as string), pageSize: parseInt(pageSize as string), data: rows },
+        HttpStatus.CREATED
+      );
     } catch (error) {
       console.error(`Error fetching paginated bundles:, ${error}`);
       next(error);
