@@ -4,8 +4,8 @@ import HttpStatus from 'http-status-codes';
 import { sql } from '../database/sql';
 import type { Order } from '../interfaces';
 import { generateRandomCode, respond } from '../utilities';
-import { cancelPaymentPlan, createPaymentPlan, initiatePayment } from '@src/services/flutterwave';
-import { ORDER_STATUS } from '@src/constants';
+import { cancelPaymentPlan, createPaymentPlan, initiatePayment } from '../services/flutterwave';
+import { ORDER_STATUS } from '../constants';
 
 interface LastOrder {
   order: Order;
