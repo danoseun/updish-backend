@@ -1,5 +1,5 @@
 import { resetDatabase } from '../../config/local.config';
-import { createItemImagesTable, createUserTable } from '../models';
+import { createBundleImagesTable, createUserTable } from '../models';
 import { createKycTable } from '../models';
 import { logger } from '../../utilities';
 //import { seedUsers } from '../seeders';
@@ -19,9 +19,9 @@ import { seedAdmins } from '../seeders/admin';
     // await seedUsers();
     await createParentItemTable();
     await createItemTable();
-    await createItemImagesTable();
     await createBundleTable();
     await createBundleItemTable();
+    await createBundleImagesTable();
     await createOrderTable();
     await createPaymentPlanTable();
     await createorderMealsTable();

@@ -52,7 +52,6 @@ export const authenticateAdmin = () => {
   return async (req: Request, res: Response, next: NextFunction) => {
     console.log("helllooo====>>>")
     const { authorization } = req.headers;
-
     if (!authorization) {
       return next(new NotAuthenticatedError('No token provided'));
     }
@@ -63,7 +62,7 @@ export const authenticateAdmin = () => {
       if (!token) {
         return next(new NotAuthenticatedError('No token provided'));
       }
-
+      
       const decoded = JWT.decode(token);
       const admin = await findAdminByEmail([decoded?.email] as Partial<Admin>);
     
@@ -73,7 +72,6 @@ export const authenticateAdmin = () => {
 
       delete admin.password;
       res.locals.admin = admin;
-      console.log("pass====>")
       return next();
     } catch (error) {
       if (error instanceof TokenExpiredError) {

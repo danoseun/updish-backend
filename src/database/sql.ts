@@ -45,7 +45,7 @@ export const sql = {
       WHERE 
           b.is_active = true
       GROUP BY b.id`,
-  createImagesForItem: 'INSERT INTO item_images (item_id, public_id, image_url) values ($1, $2, $3) returning *',
+  createImagesForBundle: 'INSERT INTO bundle_images (bundle_id, public_id, image_url) values ($1, $2, $3) returning *',
   itemsByCategory: `SELECT jsonb_object_agg(category, items) AS category_items
       FROM (
           SELECT category, JSONB_AGG(items.*) AS items

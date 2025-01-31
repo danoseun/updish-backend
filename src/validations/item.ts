@@ -4,9 +4,8 @@ export const createItemSchema = celebrate(
   {
     [Segments.BODY]: Joi.object().keys({
       name: Joi.string().required().trim(),
-      uom: Joi.number().required(),
-      description: Joi.string().required(),
-      // category: Joi.string().valid('Breakfast', 'Lunch', 'Dinner').required(),
+      uom: Joi.string().required(),
+      description: Joi.string(),
       allergies: Joi.string().trim().required(),
       class_of_food: Joi.string().trim().required(),
       calories_per_uom: Joi.string().trim().required(),
@@ -73,14 +72,15 @@ export const createBundleSchema = celebrate(
           'array.base': 'Items must be an array of objects'
         }),
 
-      health_impact: Joi.string().trim().max(255).required().messages({
-        'string.empty': 'Health impact is required',
-        'string.max': 'Health impact must not exceed 255 characters'
+      health_impact: Joi.array().items(Joi.string().required()).label('Health Impact').messages({
+        'array.base': 'Health impact must be an array of strings.',
+        'string.base': 'Each health impact must be a string.'
       }),
 
-      category: Joi.string().valid('breakfast', 'lunch', 'dinner').required().messages({
+      category: Joi.string().valid('Breakfast', 'Lunch', 'Dinner').required().messages({
         'string.empty': 'Category is required'
       }),
+
       price: Joi.string()
         .trim()
         .regex(/^\d+(,\d{3})*(N)?$/)
