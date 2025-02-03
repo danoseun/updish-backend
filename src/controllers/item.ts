@@ -327,7 +327,7 @@ export const ItemController = {
   },
 
   getActiveBundles: (): RequestHandler => async (req, res, next) => {
-    const userId = parseInt(req.params.userId, 10);
+    const userId = res.locals.user.id;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const searchTerm = req.query.search as string | null;
