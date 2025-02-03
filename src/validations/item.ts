@@ -99,7 +99,7 @@ export const createBundleSchema = celebrate(
     abortEarly: false // Collect all validation errors instead of stopping at the first error
   }
 );
-export const getActiveMealBundles = celebrate(
+export const getActiveMealBundlesSchema = celebrate(
   {
     [Segments.PARAMS]: Joi.object().keys({
       userId: Joi.number().required()
