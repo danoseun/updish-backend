@@ -173,7 +173,7 @@ export const OrderController = {
           userId,
           paymentPlanId,
           mealOrderAmount,
-          'hourly',
+          'hourly', // should change this to weekly
           'active'
         ]);
       }

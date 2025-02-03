@@ -13,7 +13,8 @@ import {
   findParentItem,
   findParentItemByName,
   getItemsByCategory,
-  findItemById
+  findItemById,
+  getActiveMealBundles
 } from '../repository/item';
 import { sql } from '../database/sql';
 import { BadRequestError, ConflictError, ResourceNotFoundError } from '../errors';
@@ -243,11 +244,11 @@ export const ItemController = {
 
   toggleBundleStatus: (): RequestHandler => async (req, res, next) => {
     const { id } = req.params;
-  
+
     if (!id) {
       return respond(res, 'Bundle ID required', HttpStatus.NOT_FOUND);
     }
-  
+
     try {
       const query = `
         UPDATE bundles 
@@ -255,14 +256,14 @@ export const ItemController = {
         WHERE id = $1 
         RETURNING id, name, is_active;
       `;
-  
+
       const { rows } = await pool.query(query, [id]);
-  
+
       if (rows.length === 0) {
         return respond(res, 'Bundle not found', HttpStatus.NOT_FOUND);
       }
-  
-      return respond(res, { message: 'Bundle  status toggled successfully', bundle: rows[0]}, HttpStatus.OK);
+
+      return respond(res, { message: 'Bundle  status toggled successfully', bundle: rows[0] }, HttpStatus.OK);
     } catch (error) {
       console.error('Error toggling bundle status:', error);
       next(error);
@@ -326,144 +327,17 @@ export const ItemController = {
   },
 
   getActiveBundles: (): RequestHandler => async (req, res, next) => {
+    const userId = parseInt(req.params.userId, 10);
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const searchTerm = req.query.search as string | null;
+    const category = req.query.category as string | null;
+
     try {
-      // Extract user_id and other parameters
-      const userId = res.locals.user.id;
-      if (!userId) {
-        return respond(res, 'User ID is required', HttpStatus.BAD_REQUEST);
-      }
-
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
-      const offset = (page - 1) * limit;
-
-      const searchQuery = req.query.search as string | undefined;
-
-      // Get user's health goals from the `kycs` table
-      const healthGoalsQuery = `
-          SELECT health_goals
-          FROM kycs
-          WHERE user_id = $1
-        `;
-      const healthGoalsResult = await pool.query(healthGoalsQuery, [userId]);
-      const healthGoals = healthGoalsResult.rows[0]?.health_goals;
-
-      if (!healthGoals) {
-        return respond(res, 'No health goals found for the user', HttpStatus.NOT_FOUND);
-      }
-
-      // Base Query
-      let query = `
-        SELECT 
-        b.id AS bundle_id,
-        b.name AS bundle_name,
-        b.health_impact,
-        b.category,
-        b.price,
-        b.is_active,
-        json_agg(
-            DISTINCT jsonb_build_object(
-                'id', bi.id,
-                'item', bi.item,
-                'qty', bi.qty
-            )
-        ) AS bundle_items,
-        json_agg(
-            DISTINCT jsonb_build_object(
-                'id', img.id,
-                'public_id', img.public_id,
-                'image_url', img.image_url
-            )
-        ) AS bundle_images
-      FROM 
-        bundles b
-      LEFT JOIN 
-        bundle_items bi ON b.id = bi.bundle_id
-      LEFT JOIN 
-        bundle_images img ON b.id = img.bundle_id
-      WHERE 
-        b.is_active = true
-        AND b.health_impact ILIKE $1
-      GROUP BY 
-        b.id;
-        `;
-      let countQuery = `
-          SELECT COUNT(*) AS total
-          FROM bundles
-          WHERE is_active = true
-          AND health_impact ILIKE $1
-        `;
-
-      const params: any[] = [`%${healthGoals}%`];
-      if (searchQuery) {
-        query += ` AND b.name ILIKE $${params.length + 1}`;
-        countQuery += ` AND name ILIKE $${params.length + 1}`;
-        params.push(`%${searchQuery}%`);
-      }
-
-      query += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-      params.push(limit, offset);
-
-      // Fetch paginated data
-      const { rows } = await pool.query(query, params);
-
-      // Fetch total count
-      const countResult = await pool.query(countQuery, params.slice(0, -2));
-      const total = parseInt(countResult.rows[0].total);
-
-      // Transform flat data into nested structure
-      const bundles = rows.reduce((acc: any[], row) => {
-        let bundle = acc.find((b) => b.id === row.bundle_id);
-
-        if (!bundle) {
-          bundle = {
-            id: row.bundle_id,
-            name: row.bundle_name,
-            health_impact: row.health_impact,
-            price: row.price,
-            is_active: row.is_active,
-            created_at: row.bundle_created_at,
-            updated_at: row.bundle_updated_at,
-            bundle_items: []
-          };
-          acc.push(bundle);
-        }
-
-        let bundleItem = bundle.bundle_items.find((bi: { id: any }) => bi.id === row.bundle_item_id);
-        if (!bundleItem) {
-          bundleItem = {
-            id: row.bundle_item_id,
-            qty: row.bundle_item_qty,
-            item: {
-              id: row.item_id,
-              name: row.item_name,
-              description: row.item_description,
-              category: row.item_category,
-              class_of_food: row.item_class_of_food,
-              calories_per_uom: row.item_calories,
-              images: []
-            }
-          };
-          bundle.bundle_items.push(bundleItem);
-        }
-
-        if (row.image_id) {
-          bundleItem.item.images.push({
-            id: row.image_id,
-            public_id: row.image_public_id,
-            image_url: row.image_url
-          });
-        }
-
-        return acc;
-      }, []);
-
-      // Calculate pagination metadata
-      const totalPages = Math.ceil(total / limit);
-
-      return respond(res, { bundles, page, limit, total, totalPages }, HttpStatus.OK);
+      const result = await getActiveMealBundles(userId, page, limit, searchTerm, category);
+      return respond(res, { bundles: result.bundles, total: result. total, page, limit }, HttpStatus.OK);
     } catch (error) {
-      console.error(error);
+      console.error(`Failed to fetch meal bundles, ${error}`);
       next(error);
     }
   },
