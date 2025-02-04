@@ -57,7 +57,7 @@ export const createBundleSchema = celebrate(
       items: Joi.array()
         .items(
           Joi.object({
-            item: Joi.number().required(),
+            item: Joi.string().required(),
             qty: Joi.number().integer().positive().required().messages({
               'number.base': 'Quantity must be a number',
               'number.integer': 'Quantity must be an integer',
