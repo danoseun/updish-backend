@@ -7,7 +7,7 @@ import { createParentItemTable } from '../models';
 import { createItemTable } from '../models';
 import { createBundleTable } from '../models';
 import { createBundleItemTable, createOrderTable, createorderMealsTable, createorderExtrasTable, createAddressTable, createAdminTable, createSubscriptionTable, createWebhookTable, createPaymentPlanTable } from '../models';
-import { seedAdmins } from '../seeders/admin';
+import { seedAdmins, seedUsers, seedKycs } from '../seeders';
 
 
 
@@ -15,8 +15,9 @@ import { seedAdmins } from '../seeders/admin';
   try {
     //await resetDatabase();
     await createUserTable();
+    await seedUsers();
     await createKycTable();
-    // await seedUsers();
+    await seedKycs();
     await createParentItemTable();
     await createItemTable();
     await createBundleTable();

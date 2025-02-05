@@ -50,7 +50,6 @@ export const authenticate = () => {
 
 export const authenticateAdmin = () => {
   return async (req: Request, res: Response, next: NextFunction) => {
-    console.log("helllooo====>>>")
     const { authorization } = req.headers;
     if (!authorization) {
       return next(new NotAuthenticatedError('No token provided'));
@@ -113,5 +112,4 @@ export const isAdmin = async (req: Request, res: Response, next: NextFunction) =
 //     return next();
 //   }
 // };
-
 

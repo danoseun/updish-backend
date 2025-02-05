@@ -21,7 +21,6 @@ export const createItemSchema = celebrate(
 export const createParentItemSchema = celebrate(
   {
     [Segments.BODY]: Joi.object().keys({
-      admin_id: Joi.number().required(),
       name: Joi.string().required().trim()
     })
   },
@@ -54,23 +53,23 @@ export const createBundleSchema = celebrate(
         'string.max': 'Name must not exceed 255 characters'
       }),
 
-      items: Joi.array()
-        .items(
-          Joi.object({
-            item: Joi.string().required(),
-            qty: Joi.number().integer().positive().required().messages({
-              'number.base': 'Quantity must be a number',
-              'number.integer': 'Quantity must be an integer',
-              'number.positive': 'Quantity must be a positive number'
-            })
-          })
-        )
-        .min(1)
-        .required()
-        .messages({
-          'array.min': 'At least one item is required in the bundle',
-          'array.base': 'Items must be an array of objects'
-        }),
+      // items: Joi.array()
+      //   .items(
+      //     Joi.object({
+      //       item: Joi.string().required(),
+      //       qty: Joi.number().integer().positive().required().messages({
+      //         'number.base': 'Quantity must be a number',
+      //         'number.integer': 'Quantity must be an integer',
+      //         'number.positive': 'Quantity must be a positive number'
+      //       })
+      //     })
+      //   )
+      //   .min(1)
+      //   .required()
+      //   .messages({
+      //     'array.min': 'At least one item is required in the bundle',
+      //     'array.base': 'Items must be an array of objects'
+      //   }),
 
       health_impact: Joi.array().items(Joi.string().required()).label('Health Impact').messages({
         'array.base': 'Health impact must be an array of strings.',

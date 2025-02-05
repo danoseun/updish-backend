@@ -210,7 +210,7 @@ export const UserController = {
         throw new ResourceNotFoundError('You may want to signup with this email');
       }
       const compare = await comparePassword(params[1], existingUser.password);
-      console.log('compare', compare);
+     
       if (!compare) {
         throw new BadRequestError('Kindly check the password');
       } else {

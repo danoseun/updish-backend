@@ -24,7 +24,7 @@ export const sql = {
   uploadUserImage: 'INSERT INTO user_images (user_id, public_id, image_url) values ($1, $2, $3) returning *',
   deleteUserImage: 'DELETE FROM user_images WHERE public_id = $1',
   createKYC:
-    'INSERT INTO kycs (user_id, sex, health_goals, dietary_preferences, food_allergies, health_concerns) values($1, $2, $3, $4, $5, $6) returning *',
+    'INSERT INTO kycs (user_id, sex, health_goals, dietary_preferences, food_allergies, health_concerns) values($1, $2, $3::text[], $4, $5::text[], $6::text[]) returning *',
   findKYC: 'SELECT * FROM kycs WHERE user_id = $1',
   createItem:
     'INSERT INTO items (admin_id, name, uom, description, allergies, class_of_food, calories_per_uom, parent_item, is_active) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning *',
