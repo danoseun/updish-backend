@@ -201,11 +201,11 @@ export const ItemController = {
         console.log('3', bundleResult);
         const bundleId = bundleResult.rows[0].id;
         //console.log('ITEMS', items);
-        const items = [
-          { "item": 1, "qty": 3 },
-          { "item": 2, "qty": 2 },
-          { "item": 3, "qty": 1 }
-        ]
+        // const items = [
+        //   { "item": 1, "qty": 3 },
+        //   { "item": 2, "qty": 2 },
+        //   { "item": 3, "qty": 1 }
+        // ]
         const itemPromises = items.map(({ item, qty }) =>
           client.query('INSERT INTO bundle_items (bundle_id, item, qty) VALUES ($1, $2, $3)', [bundleId, item, qty])
         );
