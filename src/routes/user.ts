@@ -2,7 +2,7 @@ import { Router } from 'express';
 import passport from 'passport';
 import fileUpload from 'express-fileupload';
 
-import { checkPhoneNumberSchema, verifyUserPhoneNumberSchema, loginUserSchema, createUserWithPhoneNumberSchema, createUserWithGoogleAuthSchema, forgotPasswordSchema, acceptNewPasswordSchema, createKYCSchema, fetchKYCSchema, addressCreationSchema, savePushTokenSchema } from '../validations/user';
+import { checkPhoneNumberSchema, verifyUserPhoneNumberSchema, loginUserSchema, createUserWithPhoneNumberSchema, createUserWithGoogleAuthSchema, forgotPasswordSchema, acceptNewPasswordSchema, createKYCSchema, fetchKYCSchema, addressCreationSchema, savePushTokenSchema, googleAuthSchema } from '../validations/user';
 
 import { UserController } from '../controllers/user';
 import { authenticate } from '../middleware/authenticate';
@@ -27,7 +27,7 @@ userRouter.get('/auth/google', passport.authenticate('google', { scope: ['profil
 userRouter.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: 'https://milesrental.netlify.app/login' }), UserController.handleGoogleAuth());
 userRouter.post('/signup-with-google', createUserWithGoogleAuthSchema, UserController.createUserWithGoogleAuth());
 
-userRouter.post('/google-auth', UserController.googleAuth());
+userRouter.post('/google-auth', googleAuthSchema, UserController.googleAuth());
 
 
 // userRouter.patch('/uploads', authenticate(), fileUpload({ useTempFiles: true, limits: { fileSize: 10 * 1024 * 1024 } }), UserController.uploadPhoto());

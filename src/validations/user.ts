@@ -1,4 +1,5 @@
 import { celebrate, Joi, Segments } from "celebrate";
+import { IdTokenClient } from "google-auth-library/build/src";
 
 export const checkPhoneNumberSchema = celebrate({
   [Segments.BODY]: Joi.object().keys({
@@ -139,5 +140,11 @@ export const savePushTokenSchema = celebrate({
   [Segments.BODY]: Joi.object().keys({
     userId: Joi.number().required(),
     newPushToken: Joi.string().trim().required()
+  }),
+});
+
+export const googleAuthSchema = celebrate({
+  [Segments.BODY]: Joi.object().keys({
+    idToken: Joi.string().required()
   }),
 });
