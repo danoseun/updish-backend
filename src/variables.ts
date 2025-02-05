@@ -49,6 +49,10 @@ const variables = {
     flutterwave: {
       raveSecretApi: process.env.RAVE_SECRET_API,
       raveBaseUrl: process.env.RAVE_BASE_URL
+    },
+    mailchimp:{
+      apiKey: process.env.MAILCHIMP_API_KEY,
+      senderEmail: process.env.SENDER_EMAIL
     }
   }
 };
