@@ -1,6 +1,6 @@
 export enum SMS_STATUS {
-  PENDING = "pending",
-  APPROVED = "approved",
+  PENDING = 'pending',
+  APPROVED = 'approved'
 }
 
 export enum ORDER_STATUS {
@@ -17,3 +17,8 @@ export const uoms = [
   { id: 4, name: 'Serving' },
   { id: 5, name: 'Slice' }
 ];
+
+export const uomMap = uoms.reduce((map, uom) => {
+  map[uom.id] = uom.name;
+  return map;
+}, {});

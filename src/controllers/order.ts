@@ -5,7 +5,7 @@ import { sql } from '../database/sql';
 import type { Order } from '../interfaces';
 import { generateRandomCode, respond } from '../utilities';
 import { cancelPaymentPlan, createPaymentPlan, initiatePayment } from '../services/flutterwave';
-import { ORDER_STATUS } from '../constants';
+import { ORDER_STATUS, uomMap } from '../constants';
 
 interface LastOrder {
   order: Order;
@@ -285,9 +285,12 @@ export const OrderController = {
         const query = `
         SELECT 
             i.name AS item_name,
+            i.uom AS uom,
             SUM(bi.qty * om.quantity) AS total_quantity
         FROM 
             orders o
+        JOIN 
+            subscriptions s ON s.order_id = o.id
         JOIN 
             order_meals om ON o.id = om.order_id
         JOIN 
@@ -297,14 +300,14 @@ export const OrderController = {
         JOIN 
             items i ON bi.item = i.id
         WHERE 
-            o.status = 'paid'
+            s.status = 'paid'
             AND (
                 ($1::DATE IS NULL OR om.date = $1::DATE)
                 OR ($2::DATE IS NOT NULL AND $3::DATE IS NOT NULL AND om.date BETWEEN $2::DATE AND $3::DATE)
             )
-            AND ($4 IS NULL OR om.delivery_time = $4)
+            AND ($4::VARCHAR IS NULL OR om.delivery_time = $4::VARCHAR)
         GROUP BY 
-            i.name
+            i.name, i.uom
         ORDER BY 
             total_quantity DESC;
       `;
@@ -321,8 +324,14 @@ export const OrderController = {
         deliveryTime: deliveryTime as string | undefined
       });
 
-      return respond(res, { message: 'Demand summary retrieved successfully', data }, HttpStatus.OK);
+      const updatedData = data.map((each) => ({
+        ...each,
+        uom: uomMap[each.uom] || each.uom
+      }));
+
+      return respond(res, { message: 'Demand summary retrieved successfully', data: updatedData }, HttpStatus.OK);
     } catch (error) {
+      console.log({ error });
       next(error);
     }
   },
