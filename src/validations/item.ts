@@ -71,6 +71,31 @@ export const createBundleSchema = celebrate(
       //     'array.base': 'Items must be an array of objects'
       //   }),
 
+      items: Joi.array()
+        .items(
+          Joi.object().keys({
+            item: Joi.number().required().messages({
+              // Validate item ID as a number
+              'number.base': 'Item must be a number',
+              'any.required': 'Item is required'
+            }),
+            qty: Joi.number().integer().min(1).required().messages({
+              // Validate quantity
+              'number.base': 'Quantity must be a number',
+              'number.integer': 'Quantity must be an integer',
+              'number.min': 'Quantity must be at least 1',
+              'any.required': 'Quantity is required'
+            })
+          })
+        )
+        .min(1)
+        .required()
+        .messages({
+          // Ensure at least one item
+          'array.base': 'Items must be an array',
+          'array.min': 'At least one item is required'
+        }),
+
       health_impact: Joi.array().items(Joi.string().required()).label('Health Impact').messages({
         'array.base': 'Health impact must be an array of strings.',
         'string.base': 'Each health impact must be a string.'
@@ -82,7 +107,7 @@ export const createBundleSchema = celebrate(
 
       price: Joi.string()
         .trim()
-        .regex(/^\d+(,\d{3})*(N)?$/)
+        .regex(/^\d+(,\d{3})*$/)
         .required()
         .messages({
           'string.empty': 'Price is required',
@@ -98,4 +123,3 @@ export const createBundleSchema = celebrate(
     abortEarly: false // Collect all validation errors instead of stopping at the first error
   }
 );
-
