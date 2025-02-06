@@ -13,3 +13,4 @@ export * from './subscription'
 export * from './webhook';
 export * from './admin';
 export * from './payment_plans';
+export * from './contact_us';

@@ -1,7 +1,7 @@
 import pool from '../../config/database.config';
 import { logger } from '../../utilities';
 
-const userTable = `DROP TABLE IF EXISTS contact_us CASCADE;
+const contactUsTable = `DROP TABLE IF EXISTS contact_us CASCADE;
         CREATE TABLE contact_us (
             id SERIAL PRIMARY KEY NOT NULL,
             user_id INTEGER NOT NULL,
@@ -14,9 +14,9 @@ const userTable = `DROP TABLE IF EXISTS contact_us CASCADE;
 /**
  * Function representing contactUsTableHandler
  */
-export async function contactUsTable(): Promise<void> {
+export async function createContactUsTable(): Promise<void> {
   try {
-    const create = await pool.query(userTable);
+    const create = await pool.query(contactUsTable);
     console.log(`contactUsTable: ${create[0].command}PED and ${create[1].command}D`);
     logger.info(`contactUsTable: ${create[0].command}PED and ${create[1].command}D`);
   } catch (error) {
