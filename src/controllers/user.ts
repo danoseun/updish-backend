@@ -23,7 +23,7 @@ import {
 } from '../repository/user';
 import { createKYC, findUserKYC } from '../repository/kyc';
 import { BadRequestError, ConflictError, ResourceNotFoundError } from '../errors';
-import type { Address, KYC, User, User_Image } from '../interfaces';
+import type { Address, Contact_US, KYC, User, User_Image } from '../interfaces';
 import { SMS_STATUS } from '../constants';
 import { hashPassword, comparePassword, respond, JWT, sendOtpToUser, verifyOtp, logger } from '../utilities';
 // import {
@@ -36,6 +36,7 @@ import { hashPassword, comparePassword, respond, JWT, sendOtpToUser, verifyOtp, 
 //   getForgotPasswordUrl
 // } from '../services/email';
 import variables from '../variables';
+import { createContactUS } from '../repository/contact_us';
 
 dotenv.config();
 
@@ -567,7 +568,7 @@ export const UserController = {
   //   }
   // }
   createAddress: (): RequestHandler => async (req, res, next) => {
-    const userId = 1 || res.locals.user.id;
+    const userId = res.locals.user.id;
     const { state, city, address } = req.body;
     const params = [userId, state, city, address];
 
@@ -577,10 +578,24 @@ export const UserController = {
     } catch (error) {
       next(error);
     }
+  },
+
+  createContactUS: (): RequestHandler => async (req, res, next) => {
+    const userId = res.locals.user.id;
+    const { subject, message } = req.body;
+    const params = [userId, subject, message];
+
+    try {
+      const newContactUS = await createContactUS(params as Partial<Contact_US>);
+      return respond(res, newContactUS, HttpStatus.CREATED);
+    } catch (error) {
+      next(error);
+    }
   }
 };
 
 /**
+ * endpoint to fetch primary and secondary addresses
  * user should not be able to see food items
  * with allergies they have chosen
  */

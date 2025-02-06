@@ -1,3 +1,5 @@
+import { createContactUS } from "@src/repository/contact_us";
+
 export const sql = {
   createUser:
     'INSERT INTO users (first_name, last_name, phone_number, email, password, age, state, city, address) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning *',
@@ -83,5 +85,7 @@ export const sql = {
   fetchPendingOrders: 'SELECT * FROM orders where status = $1',
   updateOrderStatusByTransactionRef: 'UPDATE orders SET status = $1, updated_at = $2 WHERE transaction_ref = $3 RETURNING *;',
   createOrder: 'INSERT INTO orders (user_id, start_date, end_date, payment_plan_id, number_of_meals, total_price, code, status) values ($1, $2, $3, $4, $5, $6, $7, $8) returning *',
-  createOrderMeals: 'INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, address, code) values ($1, $2, $3, $4, $5, $6, $7, $8)'
+  createOrderMeals: 'INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, address, code) values ($1, $2, $3, $4, $5, $6, $7, $8)',
+  createContactUS:
+  'INSERT INTO contact_us (user_id, subject, message) values ($1, $2, $3) returning *'
 };
