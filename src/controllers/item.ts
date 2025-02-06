@@ -178,7 +178,7 @@ export const ItemController = {
     try {
       await client.query('BEGIN');
       if(!Array.isArray(items)){
-        return respond(res, 'items must be an array of objects containing item as string and qty as number', HttpStatus.BAD_REQUEST);
+        return respond(res, 'items must be an array of objects containing item and qty as numbers', HttpStatus.BAD_REQUEST);
       }
       //check for item existence before allowing bundle creation
       const query = 'SELECT 1 FROM items LIMIT 1';
@@ -323,7 +323,7 @@ export const ItemController = {
       respond(
         res,
         { message: 'Bundle created successfully', page: parseInt(page as string), pageSize: parseInt(pageSize as string), data: rows },
-        HttpStatus.CREATED
+        HttpStatus.OK
       );
     } catch (error) {
       console.error(`Error fetching paginated bundles:, ${error}`);
