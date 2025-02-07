@@ -170,6 +170,7 @@ export const ItemController = {
 
   createBundle: (): RequestHandler => async (req, res, next) => {
     const { name, items, health_impact, category, price, is_active }: Bundle & { is_active: boolean } = req.body;
+    //return console.log('...', req.body, req.files.image);
 
     const adminId = res.locals.admin.id;
 
@@ -177,9 +178,9 @@ export const ItemController = {
 
     try {
       await client.query('BEGIN');
-      if(!Array.isArray(items)){
-        return respond(res, 'items must be an array of objects containing item and qty as numbers', HttpStatus.BAD_REQUEST);
-      }
+      // if(!Array.isArray(items)){
+      //   return respond(res, 'items must be an array of objects containing item and qty as numbers', HttpStatus.BAD_REQUEST);
+      // }
       //check for item existence before allowing bundle creation
       const query = 'SELECT 1 FROM items LIMIT 1';
       const foundItems = await client.query(query);

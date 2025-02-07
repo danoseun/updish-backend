@@ -20,7 +20,6 @@ export class JWT {
   }
 
   public static decode(token: string): jwt.JwtPayload {
-    console.log('enter', token);
     try {
       const decoded = jwt.verify(token, this.secret);
       return decoded as jwt.JwtPayload;
