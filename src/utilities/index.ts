@@ -6,5 +6,6 @@ export * from './jwt.utility';
 export * from './sms.utility';
 export * from './cloudinary.utility';
 export * from './codes.utility';
+export * from './array.utility';
 
 

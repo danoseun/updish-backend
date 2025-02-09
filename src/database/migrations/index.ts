@@ -6,8 +6,8 @@ import { logger } from '../../utilities';
 import { createParentItemTable } from '../models';
 import { createItemTable } from '../models';
 import { createBundleTable } from '../models';
-import { createBundleItemTable, createOrderTable, createorderMealsTable, createorderExtrasTable, createAddressTable, createAdminTable, createSubscriptionTable, createWebhookTable, createPaymentPlanTable } from '../models';
-import { seedAdmins } from '../seeders/admin';
+import { createBundleItemTable, createOrderTable, createorderMealsTable, createorderExtrasTable, createAddressTable, createAdminTable, createSubscriptionTable, createWebhookTable, createPaymentPlanTable, createContactUsTable } from '../models';
+import { seedAdmins, seedUsers, seedKycs } from '../seeders';
 
 
 
@@ -15,8 +15,9 @@ import { seedAdmins } from '../seeders/admin';
   try {
     //await resetDatabase();
     await createUserTable();
+    await seedUsers();
     await createKycTable();
-    // await seedUsers();
+    await seedKycs();
     await createParentItemTable();
     await createItemTable();
     await createBundleTable();
@@ -31,6 +32,7 @@ import { seedAdmins } from '../seeders/admin';
     await seedAdmins();
     await createSubscriptionTable();
     await createWebhookTable();
+    await createContactUsTable();
     console.log('migration completed')
   } catch (error) {
     console.log(`ERROR IN MIGRATION ${error}`);

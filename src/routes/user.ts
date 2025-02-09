@@ -2,7 +2,7 @@ import { Router } from 'express';
 import passport from 'passport';
 import fileUpload from 'express-fileupload';
 
-import { checkPhoneNumberSchema, verifyUserPhoneNumberSchema, loginUserSchema, createUserWithPhoneNumberSchema, createUserWithGoogleAuthSchema, forgotPasswordSchema, acceptNewPasswordSchema, createKYCSchema, fetchKYCSchema, addressCreationSchema, savePushTokenSchema, googleAuthSchema } from '../validations/user';
+import { checkPhoneNumberSchema, verifyUserPhoneNumberSchema, loginUserSchema, createUserWithPhoneNumberSchema, createUserWithGoogleAuthSchema, forgotPasswordSchema, acceptNewPasswordSchema, createKYCSchema, fetchKYCSchema, addressCreationSchema, savePushTokenSchema, googleAuthSchema, createContactUsSchema } from '../validations/user';
 
 import { UserController } from '../controllers/user';
 import { authenticate } from '../middleware/authenticate';
@@ -36,7 +36,8 @@ userRouter.post('/send-forgot-password', forgotPasswordSchema, UserController.fo
 
 userRouter.patch('/update-push-token', savePushTokenSchema, UserController.savePushToken());
 userRouter.patch('/accept-new-password', acceptNewPasswordSchema, UserController.acceptNewPassword());
-userRouter.post('/addresses', addressCreationSchema, UserController.createAddress());
+userRouter.post('/addresses', authenticate(), addressCreationSchema, UserController.createAddress());
+userRouter.post('/contact-us', authenticate(), createContactUsSchema, UserController.createContactUS());
 
 // userRouter.patch('/update-password', authenticate(), updatePasswordSchema, UserController.updatePassword());
 

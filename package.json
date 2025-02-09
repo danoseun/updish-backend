@@ -14,6 +14,7 @@
     "start": "node ./dist/src/server.js"
   },
   "dependencies": {
+    "@mailchimp/mailchimp_transactional": "^1.0.59",
     "app-root-path": "^3.1.0",
     "axios": "^0.28.1",
     "bcrypt": "^5.1.1",

@@ -21,6 +21,7 @@ import { BadRequestError, ConflictError, ResourceNotFoundError } from '../errors
 import type { Item, ParentItem, Bundle } from '../interfaces';
 import { respond, upload, removeFolder } from '../utilities';
 import { uoms } from '../constants';
+import { validateItemArrayObjects } from '../utilities';
 
 export const ItemController = {
   createItem: (): RequestHandler => async (req, res, next) => {
@@ -38,7 +39,7 @@ export const ItemController = {
       req.body.parent_item,
       req.body.is_active
     ];
-    console.log({ itemParams });
+    
     try {
       await client.query('BEGIN');
 
@@ -169,6 +170,7 @@ export const ItemController = {
 
   createBundle: (): RequestHandler => async (req, res, next) => {
     const { name, items, health_impact, category, price, is_active }: Bundle & { is_active: boolean } = req.body;
+    //return console.log('...', req.body, req.files.image);
 
     const adminId = res.locals.admin.id;
 
@@ -176,9 +178,13 @@ export const ItemController = {
 
     try {
       await client.query('BEGIN');
+      // if(!Array.isArray(items)){
+      //   return respond(res, 'items must be an array of objects containing item and qty as numbers', HttpStatus.BAD_REQUEST);
+      // }
       //check for item existence before allowing bundle creation
       const query = 'SELECT 1 FROM items LIMIT 1';
       const foundItems = await client.query(query);
+      
       if (!foundItems.rowCount) {
         return respond(res, 'create an item before creating meal bundles', HttpStatus.BAD_REQUEST);
       } else {
@@ -190,7 +196,7 @@ export const ItemController = {
         }
 
         const bundleResult = await client.query(
-          'INSERT INTO bundles (admin_id, name, health_impact, category, price, is_active) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+          'INSERT INTO bundles (admin_id, name, health_impact, category, price, is_active) VALUES ($1, $2, $3::text[], $4, $5, $6) RETURNING id',
           [adminId, name, health_impact, category, price, is_active]
         );
         console.log('3', bundleResult);
@@ -318,7 +324,7 @@ export const ItemController = {
       respond(
         res,
         { message: 'Bundle created successfully', page: parseInt(page as string), pageSize: parseInt(pageSize as string), data: rows },
-        HttpStatus.CREATED
+        HttpStatus.OK
       );
     } catch (error) {
       console.error(`Error fetching paginated bundles:, ${error}`);

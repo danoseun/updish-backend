@@ -148,3 +148,15 @@ export const googleAuthSchema = celebrate({
     idToken: Joi.string().required()
   }),
 });
+
+export const createContactUsSchema = celebrate(
+  {
+    [Segments.BODY]: Joi.object().keys({
+      subject: Joi.string().trim().required(),
+      message: Joi.string().trim().required()
+    })
+  },
+  {
+    abortEarly: false
+  }
+);
