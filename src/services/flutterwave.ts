@@ -185,7 +185,6 @@ export const cancelPaymentPlan = async (id: string) => {
       },
       url: `${variables.services.flutterwave.raveBaseUrl}/v3/payment-plans/${id}/cancel`
     });
-    console.log('FROM VERIFY PAYMENT', { response });
     return response.data;
   } catch (error) {
     return {
@@ -195,6 +194,45 @@ export const cancelPaymentPlan = async (id: string) => {
   }
 };
 
+export const generateVirtualAccount = async (payload: { email: string; amount: number; order_code: string }) => {
+  try {
+    const { email, amount, order_code } = payload;
+
+    const tx_ref = `TXREF_${order_code}_${Date.now().toString()}`;
+
+    const response = await axiosService({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${variables.services.flutterwave.raveSecretApi}`
+      },
+      url: `${variables.services.flutterwave.raveBaseUrl}/v3/virtual-account-numbers`,
+      data: {
+        email,
+        amount,
+        tx_ref,
+        is_permanent: false,
+        narration: 'Updish'
+      }
+    });
+    console.log('GENERATE VIRTUAL ACCOUNT', { response });
+    if (response.data.status === 'success') {
+      return {
+        status: 'success',
+        message: 'Virtual account created successfully.',
+        data: response.data.data,
+        transaction_ref: tx_ref
+      };
+    } else {
+      throw new Error('Failed to generate virtual account');
+    }
+  } catch (error) {
+    return {
+      status: 'error',
+      message: error.message || error
+    };
+  }
+};
 
 // VERIFY_PAYMENT_RESPONSE
 // {

@@ -1,10 +1,11 @@
 import { RequestHandler } from 'express';
+import { DateTime } from 'luxon';
 import pool from '../config/database.config';
 import HttpStatus from 'http-status-codes';
 import { sql } from '../database/sql';
 import type { Order } from '../interfaces';
 import { generateRandomCode, respond } from '../utilities';
-import { cancelPaymentPlan, createPaymentPlan, initiatePayment } from '../services/flutterwave';
+import { cancelPaymentPlan, createPaymentPlan, generateVirtualAccount, initiatePayment } from '../services/flutterwave';
 import { ORDER_STATUS, uomMap } from '../constants';
 
 interface LastOrder {
@@ -180,15 +181,6 @@ export const OrderController = {
 
       const orderCode = generateRandomCode();
 
-      // initiate payment for the customer and include payment_plan_id in the payload.
-      const initiatePaymentResponse = await initiatePayment({
-        amount: String(mealOrderAmount),
-        payment_plan: paymentPlanId,
-        email: user.rows[0].email,
-        phonenumber: user.rows[0].phone_number,
-        order_code: orderCode
-      });
-
       // Create the order
       const orderResult = await client.query(sql.createOrder, [
         userId,
@@ -203,24 +195,6 @@ export const OrderController = {
 
       //@ts-ignore
       const orderId = orderResult.rows[0].id;
-
-      console.log({ orderId });
-
-      // Subscribe the user to the payment plan
-      await client.query(
-        `INSERT INTO subscriptions (user_id, payment_plan_id, transaction_ref, order_id, start_date, end_date, total_price, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [
-          userId,
-          paymentPlanId,
-          initiatePaymentResponse.transaction_ref,
-          orderId,
-          meals[0].date,
-          meals[meals.length - 1].date,
-          mealOrderAmount,
-          'pending'
-        ]
-      );
 
       // Insert meals into `order_meals` table
       const mealQuery = `
@@ -255,8 +229,119 @@ export const OrderController = {
         }
       }
 
+      // initiate payment for card customer and include payment_plan_id in the payload.
+      const initiatePaymentResponse = await initiatePayment({
+        amount: String(mealOrderAmount),
+        payment_plan: paymentPlanId,
+        email: user.rows[0].email,
+        phonenumber: user.rows[0].phone_number,
+        order_code: orderCode
+      });
+
+      // Subscribe the user to the payment plan
+      await client.query(
+        `INSERT INTO subscriptions (user_id, payment_plan_id, transaction_ref, order_id, start_date, end_date, total_price, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          userId,
+          paymentPlanId,
+          initiatePaymentResponse.transaction_ref,
+          orderId,
+          meals[0].date,
+          meals[meals.length - 1].date,
+          mealOrderAmount,
+          'pending'
+        ]
+      );
+
       await client.query('COMMIT');
       respond(res, { orderId, message: 'Order created successfully', payment_link: initiatePaymentResponse.data }, HttpStatus.CREATED);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Error creating order:', error);
+      next(error);
+    } finally {
+      client.release();
+    }
+  },
+
+  createTransferTypeOrder: (): RequestHandler => async (req, res, next) => {
+    const { userId, meals } = req.body;
+
+    if (!userId || !meals || !Array.isArray(meals) || meals.length === 0) {
+      return respond(res, 'Invalid Request payload', HttpStatus.BAD_REQUEST);
+    }
+    if (meals.length > 21) {
+      return respond(res, 'Number of meals cannot exceed 21', HttpStatus.BAD_REQUEST);
+    }
+    const mealOrderAmount = meals.reduce((sum, meal) => sum + meal.price, 0) as number;
+    const client = await pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      const orderCode = generateRandomCode();
+      // Create the order
+      const orderResult = await client.query(sql.createOrder, [
+        userId,
+        meals[0].date,
+        meals[meals.length - 1].date,
+        'N/A',
+        meals.length,
+        mealOrderAmount,
+        orderCode,
+        ORDER_STATUS.CREATED
+      ]);
+
+      //@ts-ignore
+      const orderId = orderResult.rows[0].id;
+
+      // Insert meals into `order_meals` table
+      const mealQuery = `
+      INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, address, code)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+      RETURNING id`;
+
+      console.log({ meals });
+      for (const meal of meals) {
+        const mealCode = generateRandomCode();
+        const mealResult = await client.query(mealQuery, [
+          orderId,
+          meal.date,
+          meal.category,
+          meal.bundleId,
+          meal.quantity,
+          meal.delivery_time,
+          meal.address,
+          mealCode
+        ]);
+        const orderMealId = mealResult.rows[0].id;
+
+        // Insert extras into order_extras table (if any)
+        if (meal.extras && meal.extras.length > 0) {
+          const insertExtrasQuery = `
+                INSERT INTO order_extras (order_meal_id, extra_name, quantity)
+                VALUES ($1, $2, $3)
+              `;
+          for (const extra of meal.extras) {
+            await client.query(insertExtrasQuery, [orderMealId, extra.name, meal.quantity]);
+          }
+        }
+      }
+
+      const user = await client.query(`SELECT email, phone_number FROM users WHERE id = $1`, [userId]);
+
+      const virtualAccountResponse = await generateVirtualAccount({ email: user.rows[0].email, amount: mealOrderAmount, order_code: orderCode });
+
+      // Subscribe the user for the week
+      await client.query(
+        `INSERT INTO subscriptions (user_id, payment_plan_id, transaction_ref, order_id, start_date, end_date, total_price, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [userId, 'N/A', virtualAccountResponse.transaction_ref, orderId, meals[0].date, meals[meals.length - 1].date, mealOrderAmount, 'pending']
+      );
+
+      await client.query('COMMIT');
+      respond(res, { orderId, message: 'Order created successfully', data: { ...virtualAccountResponse.data, mealOrderAmount } }, HttpStatus.CREATED);
     } catch (error) {
       await client.query('ROLLBACK');
       console.error('Error creating order:', error);
@@ -712,6 +797,8 @@ export const OrderController = {
     const userId = res.locals.user.id;
     const { code, meals } = req.body;
 
+    console.log({ meals });
+
     if (!meals || !Array.isArray(meals) || meals.length === 0) {
       return respond(res, 'Invalid meals payload', HttpStatus.BAD_REQUEST);
     }
@@ -724,22 +811,22 @@ export const OrderController = {
       await client.query('BEGIN');
 
       // Fetch active user plan
-      const activePaymentPlanResult = await client.query(`SELECT * from payment_plans WHERE user_id = $1 AND status = 'active`, [userId]);
+      const activePaymentPlanResult = await client.query(`SELECT * from payment_plans WHERE user_id = $1 AND status = 'active'`, [userId]);
 
       if (!activePaymentPlanResult.rows.length) {
         return respond(res, { message: 'No active user plan found' }, HttpStatus.BAD_REQUEST);
       }
       const payment_plan_id = activePaymentPlanResult.rows[0].payment_plan_id;
 
-      // Fetch the existing order that has order_meals
-      const previousOrderResult = await getLastOrderService(userId, ORDER_STATUS.COMPLETED);
-
-      if (previousOrderResult.meals.length === 0) {
-        return respond(res, 'No previous found', HttpStatus.NOT_FOUND);
+      // Fetch the existing order in-progress that has order_meals
+      const currentOrderResult = await getLastOrderService(userId, ORDER_STATUS.IN_INPROGRES);
+      console.log({ currentOrderResult });
+      if (!currentOrderResult && !currentOrderResult?.meals?.length) {
+        return respond(res, 'No current order_meal found', HttpStatus.NOT_FOUND);
       }
 
       //we can use the number_of_meals here or the value from meals array
-      const previousOrderMeals = previousOrderResult.meals;
+      const previousOrderMeals = currentOrderResult?.meals;
 
       // Check meal count
       if (meals.length !== previousOrderMeals.length) {
@@ -747,67 +834,121 @@ export const OrderController = {
       }
 
       // check that the new order price still matches the payment_plan_amount
-      if (mealOrderAmount !== activePaymentPlanResult.rows[0].amount) {
+      console.log({ mealOrderAmount });
+      if (mealOrderAmount != activePaymentPlanResult.rows[0].amount) {
         return respond(res, `Order cost should not exceed payment plan`, HttpStatus.BAD_REQUEST);
       }
 
-      // ensure there is no pending subscription to avoid multiple update
-      const existingPendingSubscription = await client.query(
-        `
-        SELECT * FROM subscriptions 
-        WHERE user_id = $1
-        AND payment_plan_id = $2
-        AND status = 'pending'
-        `,
-        [userId, payment_plan_id]
-      );
-
-      if (existingPendingSubscription.rows.length) {
-        return respond(res, { message: 'You have a pending updated order' }, HttpStatus.CONFLICT);
-      }
-
-      // create a new order for the week – it is a new order regardless whether it's the same meals as the last order
-      const orderCode = generateRandomCode();
-      const orderResult = await client.query(sql.createOrder, [
+      // check that the customer has paid and webhook has received notification
+      const upcomingOrder = await client.query(`SELECT * FROM orders WHERE user_id = $1 AND payment_plan_id = $2 AND status = 'paid'`, [
         userId,
-        meals[0].date,
-        meals[meals.length - 1].date,
-        previousOrderResult.order.payment_plan_id,
-        meals.length,
-        mealOrderAmount,
-        orderCode,
-        'created'
+        payment_plan_id
       ]);
-      //@ts-ignore
-      const orderId = orderResult.rows[0].id;
-
-      // create subscription for the new week
-      //@ts-ignore
-      const startDate = new Date(orderResult.rows[0].start_date);
-      const newStartDate = new Date(startDate.setDate(startDate.getDate() + 7));
-      const newEndDate = new Date(newStartDate);
-      newEndDate.setDate(newEndDate.getDate() + 7);
-
-      await client.query(
-        `INSERT INTO subscriptions (user_id, order_id, start_date, end_date, payment_plan_id, total_price, status)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [userId, orderId, newStartDate, newEndDate, payment_plan_id, mealOrderAmount, 'pending']
-      );
-
-      // Insert updated meals
-      for (const meal of meals) {
-        const mealCode = generateRandomCode();
-        await client.query(sql.createOrderMeals, [
-          orderId,
-          meal.date,
-          meal.category,
-          meal.bundleId,
-          meal.quantity,
-          meal.delivery_time,
-          meal.address,
-          mealCode
-        ]);
+      console.log({ upcomingOrder });
+      if (!upcomingOrder.rows.length) {
+        return respond(res, `You have not been charged for the upcoming order, please check back.`, HttpStatus.BAD_REQUEST);
       }
+
+      const orderId = upcomingOrder.rows[0].id;
+
+      // check that time difference between time of update and start_date of upcoming meal is >=24 hrs
+      const upcomingOrderStartDateString = new Date(upcomingOrder.rows[0].start_date).toISOString();
+      const upcomingOrderStartDate = DateTime.fromISO(upcomingOrderStartDateString).setZone('Africa/Lagos').startOf('day');
+      const currentTime = DateTime.now().setZone('Africa/Lagos');
+      const hourlyDiff = upcomingOrderStartDate.diff(currentTime, 'hours').hours;
+      if (hourlyDiff < 24) {
+        return respond(res, `Meals update cannot be made less than 24 hours to start of order`, HttpStatus.BAD_REQUEST);
+      }
+      // introduce a boolean column on order to tell if upcoming order has already been updated by customer
+
+      // // ensure there is no pending subscription to avoid multiple update
+      // const existingPendingSubscription = await client.query(
+      //   `
+      //   SELECT * FROM subscriptions
+      //   WHERE user_id = $1
+      //   AND payment_plan_id = $2
+      //   AND status = 'pending'
+      //   `,
+      //   [userId, payment_plan_id]
+      // );
+
+      // if (existingPendingSubscription.rows.length) {
+      //   return respond(res, { message: 'You have a pending updated order' }, HttpStatus.CONFLICT);
+      // }
+
+      // // create a new order for the week – it is a new order regardless whether it's the same meals as the last order
+      // const orderCode = generateRandomCode();
+      // const orderResult = await client.query(sql.createOrder, [
+      //   userId,
+      //   meals[0].date,
+      //   meals[meals.length - 1].date,
+      //   currentOrderResult.order.payment_plan_id,
+      //   meals.length,
+      //   mealOrderAmount,
+      //   orderCode,
+      //   'created'
+      // ]);
+      // //@ts-ignore
+      // const orderId = orderResult.rows[0].id;
+
+      // // create subscription for the new week
+      // //@ts-ignore
+      // const startDate = new Date(orderResult.rows[0].start_date);
+      // const newStartDate = new Date(startDate.setDate(startDate.getDate() + 7));
+      // const newEndDate = new Date(newStartDate);
+      // newEndDate.setDate(newEndDate.getDate() + 7);
+
+      // await client.query(
+      //   `INSERT INTO subscriptions (user_id, order_id, start_date, end_date, payment_plan_id, total_price, status)
+      //        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      //   [userId, orderId, newStartDate, newEndDate, payment_plan_id, mealOrderAmount, 'pending']
+      // );
+
+      // // Insert updated meals
+      // for (const meal of meals) {
+      //   const mealCode = generateRandomCode();
+      //   await client.query(sql.createOrderMeals, [
+      //     upcomingOrder.rows[0].id,
+      //     meal.date,
+      //     meal.category,
+      //     meal.bundleId,
+      //     meal.quantity,
+      //     meal.delivery_time,
+      //     meal.address,
+      //     mealCode
+      //   ]);
+      // }
+
+      // Delete existing records
+      await client.query('DELETE FROM order_meals WHERE order_id = $1', [orderId]);
+
+      // Insert new records (Batch Insert)
+      const values = meals
+        .map(
+          (_, index) =>
+            `($1, $${index * 7 + 2}::DATE, $${index * 7 + 3}, $${index * 7 + 4}, $${index * 7 + 5}, $${index * 7 + 6}, $${index * 7 + 7}::TEXT, $${index * 7 + 8})`
+        )
+        .join(', ');
+
+      const params = [
+        orderId,
+        ...meals.flatMap(({ category, bundleId, quantity, date, delivery_time, address }) => [
+          date,
+          category,
+          bundleId,
+          quantity,
+          delivery_time,
+          address,
+          generateRandomCode()
+        ])
+      ];
+
+      const query = `
+      INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, address, code)
+      VALUES ${values}
+      `;
+
+      await client.query(query, params);
 
       await client.query('COMMIT');
       respond(res, { message: 'Order meals updated successfully' }, HttpStatus.OK);
@@ -834,7 +975,6 @@ export const OrderController = {
         return respond(res, { message: 'No active plan for this user' }, HttpStatus.NOT_FOUND);
       }
       const cancelPlanResponse = await cancelPaymentPlan(existingPaymentPlan.rows[0].payment_plan_id);
-      console.log({ cancelPlanResponse });
 
       if (cancelPlanResponse.status === 'success') {
         await pool.query(
