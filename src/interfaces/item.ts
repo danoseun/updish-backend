@@ -39,4 +39,5 @@ export interface Bundle {
   category: string;
   price: string;
   is_active: boolean;
+  is_extra?: boolean;
 }

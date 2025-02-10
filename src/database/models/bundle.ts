@@ -10,6 +10,7 @@ const bundleTable = `
             health_impact TEXT[],
             category VARCHAR(255) NOT NULL,
             price VARCHAR(50),
+            is_extra BOOLEAN,
             is_active BOOLEAN,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
