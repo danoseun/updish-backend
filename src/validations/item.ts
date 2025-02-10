@@ -107,9 +107,11 @@ export function createBundleSchema(req: Request, res: Response, next: NextFuncti
       }
     }
 
+
     if(!req.files.image){
-      return respond(res, { error: 'Kindly upload an image for the meal bundle'});
+      return respond(res, { error: 'Kindly upload an image for the meal bundle'}, HttpStatus.BAD_REQUEST);
     }
+
 
     // Add parsed values back to the validated object
     value.items = items;
