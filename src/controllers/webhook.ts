@@ -7,6 +7,7 @@ import { getLastOrderService } from './order';
 import { sql } from '../database/sql';
 import { verifyPayment } from '../services/flutterwave';
 import { ORDER_STATUS } from '../constants';
+import { emailSender } from '@src/utilities/email.utility';
 
 interface WebhookData {
   tx_ref: string;
@@ -89,31 +90,20 @@ export const WebHookController = {
           await client.query(`UPDATE orders SET status = 'paid' WHERE id = $1`, [orderId]);
 
           // Notify customer(method needs to be added)
+          await emailSender({
+            subject: 'Welcome to Updish!',
+            text: `Hello, ${userResult.rows[0].first_name}. Your payment has been confirmed and we will start working on getting your meals to you. Do enjoy them as they come! Updish!`,
+            recipientMail: userResult.rows[0].email
+          });
           // await sendNotification(customer.email, 'Payment Successful', 'Your subscription has been paid.');
         } else {
           console.log('RECURRING====>>>');
           // Handle new order creation for recurring subscription
           // Create new order, order_meals and subscription
 
-          // // Make idempotent against duplicate webhook
-          // const existingPaidSubscription = await client.query(
-          //   `SELECT * FROM subscriptions
-          //   WHERE user_id = $1
-          //   AND payment_plan_id = $2
-          //   AND transaction_ref = $3
-          //   AND status = 'paid'`,
-          //   [userId, payment_plan_id, tx_ref]
-          // );
-
-          // if (existingPaidSubscription.rows.length) {
-          //   console.log('<===DUPLICATE WEBHOOK===>');
-          //   logger.info('Duplicate webhook');
-          //   return respond(res, { message: 'Duplicate webhook' }, HttpStatus.CONFLICT);
-          // }
-
           const orderCode = generateRandomCode();
 
-          const lastCreatedOrderResult = await getLastOrderService(userId, ORDER_STATUS.IN_INPROGRES);
+          const lastCreatedOrderResult = await getLastOrderService(userId, ORDER_STATUS.IN_PROGRESS);
 
           if (verifyPaymentResponse.data.amount === lastCreatedOrderResult.order.total_price && verifyPaymentResponse.data.currency === 'NGN') {
             respond(res, { message: '' }, HttpStatus.OK);
@@ -158,6 +148,12 @@ export const WebHookController = {
           );
 
           // Notify customer(needs to be added)
+          await emailSender({
+            subject: 'Updish Subscription Renewal!',
+            text: `Hello, ${userResult.rows[0].first_name}. Your payment for the recurring meal plan subscription has been confirmed. Kindly go into the app and use this code ${orderCode} to update your meals. Enjoy!
+            `,
+            recipientMail: userResult.rows[0].email
+          });
           // await sendNotification(customer.email, 'Subscription Created', 'Your new subscription has been created.');
         }
       } else {

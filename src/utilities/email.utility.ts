@@ -17,10 +17,19 @@ const mailchimp = require('@mailchimp/mailchimp_transactional')(variables.servic
 //     ]
 //   };
 
-export const emailSender = async (message: object) => {
+export const emailSender = async (message: { subject: string; text: string; recipientMail: string }) => {
+  const { subject, text, recipientMail } = message;
   try {
     const response = await mailchimp.messages.send({
-      message
+      from_email: variables.services.mailchimp.senderEmail,
+      subject,
+      text,
+      to: [
+        {
+          email: recipientMail,
+          type: 'to'
+        }
+      ]
     });
     console.log('email response', response);
     //return response;

@@ -133,7 +133,9 @@ export const OrderController = {
     //   client.release();
     // }
 
-    const { userId, meals } = req.body;
+    const { meals } = req.body;
+
+    const userId = res.locals.user.id
 
     if (!userId || !meals || !Array.isArray(meals) || meals.length === 0) {
       return respond(res, 'Invalid Request payload', HttpStatus.BAD_REQUEST);
@@ -819,7 +821,7 @@ export const OrderController = {
       const payment_plan_id = activePaymentPlanResult.rows[0].payment_plan_id;
 
       // Fetch the existing order in-progress that has order_meals
-      const currentOrderResult = await getLastOrderService(userId, ORDER_STATUS.IN_INPROGRES);
+      const currentOrderResult = await getLastOrderService(userId, ORDER_STATUS.IN_PROGRESS);
       console.log({ currentOrderResult });
       if (!currentOrderResult && !currentOrderResult?.meals?.length) {
         return respond(res, 'No current order_meal found', HttpStatus.NOT_FOUND);
