@@ -8,7 +8,7 @@ const bundleTable = `
             admin_id INTEGER,
             name VARCHAR(255) NOT NULL,
             health_impact TEXT[],
-            category VARCHAR(255) NOT NULL,
+            category TEXT[] NOT NULL,
             price VARCHAR(50),
             is_extra BOOLEAN,
             is_active BOOLEAN,

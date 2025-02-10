@@ -194,7 +194,7 @@ export const ItemController = {
 
         // If `is_extra` is provided, include it in the insert query, otherwise, default to `false`
         const bundleResult = await client.query(
-          'INSERT INTO bundles (admin_id, name, health_impact, category, price, is_active, is_extra) VALUES ($1, $2, $3::text[], $4, $5, $6, $7) RETURNING id',
+          'INSERT INTO bundles (admin_id, name, health_impact, category, price, is_active, is_extra) VALUES ($1, $2, $3::text[], $4::text[], $5, $6, $7) RETURNING id',
           [adminId, name, health_impact, category, price, is_active, is_extra ?? false] // Default to false if is_extra is not provided
         );
         console.log('3', bundleResult);

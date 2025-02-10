@@ -51,8 +51,10 @@ const schema = Joi.object({
   name: Joi.string().required(),
   items: Joi.string().required(), // Items will be a string containing a JSON array
   health_impact: Joi.string().required(), // Health impact will be a string of comma-separated values
-  price: Joi.string().pattern(/^\d+(\.\d{1,2})?$/).required(),
-  category: Joi.string().valid('Breakfast', 'Lunch', 'Dinner').required(),
+  price: Joi.string()
+    .pattern(/^\d+(\.\d{1,2})?$/)
+    .required(),
+  category: Joi.string().required(),
   is_active: Joi.boolean().required(),
   is_extra: Joi.boolean().optional() // Optional is_extra field
 });
@@ -107,15 +109,31 @@ export function createBundleSchema(req: Request, res: Response, next: NextFuncti
       }
     }
 
+    const validCategories = ['Breakfast', 'Lunch', 'Dinner'];
 
-    if(!req.files.image){
-      return respond(res, { error: 'Kindly upload an image for the meal bundle'}, HttpStatus.BAD_REQUEST);
+    // Parse the input
+    const categories = JSON.parse(value.category);
+
+    // Validate that it's an array and filter for only allowed values
+    if (!Array.isArray(categories)) {
+      throw new Error('Invalid input: Expected an array.');
     }
 
+    // Check for invalid categories
+    const invalidCategories = categories.filter((category: string) => !validCategories.includes(category));
+
+    if (invalidCategories.length > 0) {
+      throw new Error(`Invalid category found: ${invalidCategories.join(', ')}`);
+    }
+
+    if (!req.files.image) {
+      return respond(res, { error: 'Kindly upload an image for the meal bundle' }, HttpStatus.BAD_REQUEST);
+    }
 
     // Add parsed values back to the validated object
     value.items = items;
     value.health_impact = impacts;
+    value.category = categories;
 
     // Store parsed data in req.body to pass it to the next middleware/handler
     req.body = value;

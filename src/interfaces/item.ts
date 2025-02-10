@@ -36,7 +36,7 @@ export interface Bundle {
   name: string;
   items: BundleItem[];
   health_impact: string;
-  category: string;
+  category: string[];
   price: string;
   is_active: boolean;
   is_extra?: boolean;
