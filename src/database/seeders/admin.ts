@@ -12,11 +12,13 @@ import { logger } from '../../utilities';
 
 const hashedPassword = bcrypt.hashSync('15eNE]2n~Q', variable.auth.rounds);
 const hashedPasswordTwo = bcrypt.hashSync('admin', variable.auth.rounds);
+const hashedPasswordThree = bcrypt.hashSync('Updish@1#', variable.auth.rounds);
 
 
 const variables = [
   ['hycenth@tryupdish.com', hashedPassword, 'Hycenth', 'Admin'],
-  ['segunoz1@gmail.com', hashedPasswordTwo, 'Segun', 'Admin']
+  ['segunoz1@gmail.com', hashedPasswordTwo, 'Segun', 'Admin'],
+  ['anitaupdish@gmail.com', hashedPasswordThree, 'Anita', 'Admin']
 ];
 const sql = format('INSERT INTO admins (email, password, first_name, last_name) VALUES %L returning id', variables);
 
