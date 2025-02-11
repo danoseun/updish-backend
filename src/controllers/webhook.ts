@@ -7,6 +7,7 @@ import { getLastOrderService } from './order';
 import { sql } from '../database/sql';
 import { verifyPayment } from '../services/flutterwave';
 import { ORDER_STATUS } from '../constants';
+import { emailSender } from '@src/utilities/email.utility';
 
 interface WebhookData {
   tx_ref: string;
@@ -22,6 +23,7 @@ interface WebhookData {
 
 export const WebHookController = {
   handleWebhook: (): RequestHandler => async (req, res) => {
+    console.log('triggered ======>>>>');
     const { event, data } = req.body;
     const signature = req.headers['verif-hash']; // Header sent by Flutterwave
     const secretHash = process.env.FLUTTERWAVE_SECRET_HASH;
@@ -45,7 +47,7 @@ export const WebHookController = {
       const userId = userResult.rows[0].id;
 
       // Fetch active user plan
-      const activePaymentPlanResult = await client.query(`SELECT * from payment_plans WHERE user_id = $1`, [userId]);
+      const activePaymentPlanResult = await client.query(`SELECT * from payment_plans WHERE user_id = $1 AND status = 'active'`, [userId]);
       if (!activePaymentPlanResult.rows.length) {
         return respond(res, { message: 'No active user plan found' }, HttpStatus.NOT_FOUND);
       }
@@ -55,7 +57,7 @@ export const WebHookController = {
       const verifyPaymentResponse = await verifyPayment(data.id);
       console.log('VERIFY RESPONSE INSIDE WEBHOOK', verifyPaymentResponse.data);
 
-      if (event === 'charge.completed' && verifyPaymentResponse.data === 'successful') {
+      if (event === 'charge.completed' && verifyPaymentResponse.data.status === 'successful') {
         // Check for existing pending subscription with the userId and transacction_ref
         const subscriptionResult = await client.query(
           `SELECT s.*, o.* 
@@ -68,6 +70,8 @@ export const WebHookController = {
           [userId, payment_plan_id, tx_ref]
         );
 
+        console.log('sub_rows==>>', subscriptionResult.rows);
+
         if (subscriptionResult.rows.length) {
           console.log('FIRST_TIMER====>>>');
           // this is a first timer, order and sub already created in create. Update status here
@@ -78,40 +82,28 @@ export const WebHookController = {
           }
 
           const subscriptionId = subscriptionResult.rows[0].id;
-          console.log({ subscriptionId });
           const orderId = subscriptionResult.rows[0].order_id;
 
           // Update order and subscription status
           await client.query(`UPDATE subscriptions SET status = 'paid' WHERE id = $1`, [subscriptionId]);
 
-          await client.query(`UPDATE orders SET status = 'in-progress' WHERE id = $1`, [orderId]);
+          await client.query(`UPDATE orders SET status = 'paid' WHERE id = $1`, [orderId]);
 
           // Notify customer(method needs to be added)
+          await emailSender({
+            subject: 'Welcome to Updish!',
+            text: `Hello, ${userResult.rows[0].first_name}. Your payment has been confirmed and we will start working on getting your meals to you. Do enjoy them as they come! Updish!`,
+            recipientMail: userResult.rows[0].email
+          });
           // await sendNotification(customer.email, 'Payment Successful', 'Your subscription has been paid.');
         } else {
           console.log('RECURRING====>>>');
           // Handle new order creation for recurring subscription
           // Create new order, order_meals and subscription
 
-          // Make idempotent against duplicate webhook
-          const existingPaidSubscription = await client.query(
-            `SELECT * FROM subscriptions 
-            WHERE user_id = $1 
-            AND payment_plan_id = $2
-            AND transaction_ref = $3
-            AND status = 'paid'`,
-            [userId, payment_plan_id, tx_ref]
-          );
-
-          if (existingPaidSubscription.rows.length) {
-            console.log('<===DUPLICATE WEBHOOK===>');
-            logger.info('Duplicate webhook');
-            return respond(res, { message: 'Duplicate webhook' }, HttpStatus.CONFLICT);
-          }
-
           const orderCode = generateRandomCode();
 
-          const lastCreatedOrderResult = await getLastOrderService(userId, ORDER_STATUS.CREATED);
+          const lastCreatedOrderResult = await getLastOrderService(userId, ORDER_STATUS.IN_PROGRESS);
 
           if (verifyPaymentResponse.data.amount === lastCreatedOrderResult.order.total_price && verifyPaymentResponse.data.currency === 'NGN') {
             respond(res, { message: '' }, HttpStatus.OK);
@@ -126,7 +118,7 @@ export const WebHookController = {
             `INSERT INTO orders (user_id, start_date, end_date, payment_plan_id, number_of_meals, total_price, code, status)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                  RETURNING id`,
-            [userId, newStartDate, newEndDate, payment_plan_id, lastCreatedOrderResult.order.number_of_meals, amount, orderCode, 'in_progress']
+            [userId, newStartDate, newEndDate, payment_plan_id, lastCreatedOrderResult.order.number_of_meals, amount, orderCode, 'paid']
           );
 
           const newOrderId = newOrderResult.rows[0].id;
@@ -134,11 +126,13 @@ export const WebHookController = {
           // Insert updated meals
           for (const meal of lastCreatedOrderResult.meals) {
             const mealCode = generateRandomCode();
+            const parsedMealDate = new Date(meal.date);
+            const newMealDate = new Date(parsedMealDate.setDate(parsedMealDate.getDate() + 7));
             await client.query(sql.createOrderMeals, [
               newOrderId,
-              meal.date,
+              newMealDate,
               meal.category,
-              meal.bundleId,
+              meal.bundle_id,
               meal.quantity,
               meal.delivery_time,
               meal.address,
@@ -154,6 +148,12 @@ export const WebHookController = {
           );
 
           // Notify customer(needs to be added)
+          await emailSender({
+            subject: 'Updish Subscription Renewal!',
+            text: `Hello, ${userResult.rows[0].first_name}. Your payment for the recurring meal plan subscription has been confirmed. Kindly go into the app and use this code ${orderCode} to update your meals. Enjoy!
+            `,
+            recipientMail: userResult.rows[0].email
+          });
           // await sendNotification(customer.email, 'Subscription Created', 'Your new subscription has been created.');
         }
       } else {

@@ -1,10 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { JsonWebTokenError, NotBeforeError, TokenExpiredError } from 'jsonwebtoken';
 import { findUserById, findAdminById, findAdminByEmail } from '../repository/user';
-import { BadRequestError, NotAuthenticatedError, NotAuthorizedError } from '../errors';
+import { BadRequestError, ForbiddenError, NotAuthenticatedError, NotAuthorizedError } from '../errors';
 import { JWT } from '../utilities';
 import { User, Admin } from '../interfaces';
-
 
 export const authenticate = () => {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -23,7 +22,7 @@ export const authenticate = () => {
 
       const decoded = JWT.decode(token);
       const user = await findUserById([decoded.id] as Partial<User>);
-    
+
       if (!user) {
         return next(new NotAuthenticatedError('Invalid token'));
       }
@@ -61,10 +60,10 @@ export const authenticateAdmin = () => {
       if (!token) {
         return next(new NotAuthenticatedError('No token provided'));
       }
-      
+
       const decoded = JWT.decode(token);
       const admin = await findAdminByEmail([decoded?.email] as Partial<Admin>);
-    
+
       if (!admin) {
         return next(new NotAuthenticatedError('Invalid token'));
       }
@@ -99,6 +98,30 @@ export const isAdmin = async (req: Request, res: Response, next: NextFunction) =
   return new NotAuthorizedError('you can not access this route');
 };
 
+export const restrictToWeekend = () => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const now = new Date();
+    const day = now.getDay(); // Sunday = 0, Monday = 1, …, Friday = 5, Saturday = 6
+    const hour = now.getHours();
+
+    let allowed = false;
+
+    if (day === 5 || day === 6) {
+      allowed = true;
+    } else if (day === 0) {
+      if (hour < 18) {
+        allowed = true;
+      }
+    }
+
+    if (!allowed) {
+      return next(new ForbiddenError('This endpoint is only accessible from Friday 12:00am to Sunday 6:00pm (GMT+1).'));
+    }
+
+    return next();
+  };
+};
+
 // export const canList = async (req: Request, res: Response, next: NextFunction) => {
 //   const { id } = res.locals.user;
 //   const foundUser = await findUserById([id] as Partial<User>);
@@ -112,4 +135,3 @@ export const isAdmin = async (req: Request, res: Response, next: NextFunction) =
 //     return next();
 //   }
 // };
-
