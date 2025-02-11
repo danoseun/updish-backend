@@ -619,6 +619,57 @@ export const UserController = {
     } catch (error) {
       next(error);
     }
+  },
+
+  getUserAddresses: (): RequestHandler => async (req, res, next) => {
+    try {
+      const userId = res.locals.user.id;
+
+      const query = `
+        SELECT 
+            u.id AS user_id,
+            u.state AS primary_state,
+            u.city AS primary_city,
+            u.address AS primary_address,
+            json_agg(
+                json_build_object(
+                    'id', a.id,
+                    'state', a.state,
+                    'city', a.city,
+                    'address', a.address,
+                    'created_at', a.created_at,
+                    'updated_at', a.updated_at
+                )
+            ) FILTER (WHERE a.id IS NOT NULL) AS secondary_addresses
+        FROM users u
+        LEFT JOIN addresses a ON u.id = a.user_id
+        WHERE u.id = $1
+        GROUP BY u.id, u.state, u.city, u.address;
+      `;
+
+      const { rows } = await pool.query(query, [userId]);
+
+      if (rows.length === 0) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      return respond(
+        res,
+        {
+          user_id: rows[0].user_id,
+          primary_address: {
+            state: rows[0].primary_state,
+            city: rows[0].primary_city,
+            address: rows[0].primary_address
+          },
+          secondary_addresses: rows[0].secondary_addresses || []
+        },
+        HttpStatus.OK
+      );
+    } catch (error) {
+      console.error('Error fetching addresses:', error);
+      next(error);
+    }
   }
 };
 
