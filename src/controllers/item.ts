@@ -39,7 +39,7 @@ export const ItemController = {
       req.body.parent_item,
       req.body.is_active
     ];
-    
+
     try {
       await client.query('BEGIN');
 
@@ -169,8 +169,7 @@ export const ItemController = {
   },
 
   createBundle: (): RequestHandler => async (req, res, next) => {
-    const { name, items, health_impact, category, price, is_active }: Bundle & { is_active: boolean } = req.body;
-    //return console.log('...', req.body, req.files.image);
+    const { name, items, health_impact, category, price, is_active, is_extra }: Bundle & { is_active: boolean; is_extra?: boolean } = req.body;
 
     const adminId = res.locals.admin.id;
 
@@ -178,15 +177,13 @@ export const ItemController = {
 
     try {
       await client.query('BEGIN');
-      // if(!Array.isArray(items)){
-      //   return respond(res, 'items must be an array of objects containing item and qty as numbers', HttpStatus.BAD_REQUEST);
-      // }
-      //check for item existence before allowing bundle creation
+
+      // Check for item existence before allowing bundle creation
       const query = 'SELECT 1 FROM items LIMIT 1';
       const foundItems = await client.query(query);
-      
+
       if (!foundItems.rowCount) {
-        return respond(res, 'create an item before creating meal bundles', HttpStatus.BAD_REQUEST);
+        return respond(res, 'Create an item before creating meal bundles', HttpStatus.BAD_REQUEST);
       } else {
         const foundBundle = await client.query('SELECT COUNT(*) FROM bundles WHERE name = $1', [name]);
         console.log('2', foundBundle);
@@ -195,24 +192,20 @@ export const ItemController = {
           throw new ConflictError('A bundle with this name already exists.');
         }
 
+        // If `is_extra` is provided, include it in the insert query, otherwise, default to `false`
         const bundleResult = await client.query(
-          'INSERT INTO bundles (admin_id, name, health_impact, category, price, is_active) VALUES ($1, $2, $3::text[], $4, $5, $6) RETURNING id',
-          [adminId, name, health_impact, category, price, is_active]
+          'INSERT INTO bundles (admin_id, name, health_impact, category, price, is_active, is_extra) VALUES ($1, $2, $3::text[], $4::text[], $5, $6, $7) RETURNING id',
+          [adminId, name, health_impact, category, price, is_active, is_extra ?? false] // Default to false if is_extra is not provided
         );
         console.log('3', bundleResult);
         const bundleId = bundleResult.rows[0].id;
-        //console.log('ITEMS', items);
-        // const items = [
-        //   { "item": 1, "qty": 3 },
-        //   { "item": 2, "qty": 2 },
-        //   { "item": 3, "qty": 1 }
-        // ]
+
         const itemPromises = items.map(({ item, qty }) =>
           client.query('INSERT INTO bundle_items (bundle_id, item, qty) VALUES ($1, $2, $3)', [bundleId, item, qty])
         );
         await Promise.all(itemPromises);
 
-        //create image
+        // Create image
         let images: QueryResult<any>;
         let imagesArray = [];
         if (req.files) {
@@ -341,7 +334,7 @@ export const ItemController = {
 
     try {
       const result = await getActiveMealBundles(userId, page, limit, searchTerm, category);
-      return respond(res, { bundles: result.bundles, total: result. total, page, limit }, HttpStatus.OK);
+      return respond(res, { bundles: result.bundles, total: result.total, page, limit }, HttpStatus.OK);
     } catch (error) {
       console.error(`Failed to fetch meal bundles, ${error}`);
       next(error);
