@@ -1,7 +1,6 @@
 import { RequestHandler } from 'express';
 import HttpStatus from 'http-status-codes';
 import pool from '../config/database.config';
-import crypto from 'crypto';
 import { generateRandomCode, logger, respond } from '../utilities';
 import { getLastOrderService } from './order';
 import { sql } from '../database/sql';
