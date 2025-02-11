@@ -7,7 +7,7 @@
     "start:staging": "NODE_ENV=staging ts-node-dev -r tsconfig-paths/register --respawn ./src/server.ts",
     "start:dev": "ts-node-dev -r tsconfig-paths/register -r ts-node-dev --respawn ./src/server.ts",
     "migrate:dev": "ts-node ./src/database/migrations",
-    "migrate": "node ./dist/src/database/migrations",
+    "migrate": "NODE_ENV=staging node ./dist/src/database/migrations",
     "build": "tsc",
     "postinstall": "npm run build && npm run migrate",
     "test": "echo \"No tests yet...\"",
