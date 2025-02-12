@@ -10,6 +10,30 @@ const variables = [
     'dietary preference',
     '{Hate allergies}',
     '{Health Concern, Health Concern Two}'
+  ],
+  [
+    2,
+    'Male',
+    '{Weight Loss, Weight Gain}', // Proper PostgreSQL array syntax
+    'dietary preference',
+    '{Hate allergies}',
+    '{Health Concern, Health Concern Two}'
+  ],
+  [
+    3,
+    'Male',
+    '{Weight Loss, Weight Gain}', // Proper PostgreSQL array syntax
+    'dietary preference',
+    '{Hate allergies}',
+    '{Health Concern, Health Concern Two}'
+  ],
+  [
+    4,
+    'Male',
+    '{Weight Loss, Weight Gain}', // Proper PostgreSQL array syntax
+    'dietary preference',
+    '{Hate allergies}',
+    '{Health Concern, Health Concern Two}'
   ]
 ];
 
