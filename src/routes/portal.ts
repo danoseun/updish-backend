@@ -20,4 +20,5 @@ portalRouter.post('/admin/items', authenticateAdmin(), createItemSchema, ItemCon
 // portalRouter.patch('/admin/items/status/:id', authenticateAdmin(), toggleItemStatusSchema, ItemController.toggleItemStatus());
 portalRouter.patch('/admin/bundles/status/:id', authenticateAdmin(), ItemController.toggleBundleStatus());
 portalRouter.get('/admin/items', ItemController.fetchAllItems());
+portalRouter.get ('/admin/messages', UserController.getContactUsMessages());
 

@@ -19,7 +19,7 @@ import {
   selectToReactivateUser,
   reactivateUser,
   createAddress,
-  updateUserPushToken,
+  updateUserPushToken
 } from '../repository/user';
 import { createKYC, findUserKYC } from '../repository/kyc';
 import { BadRequestError, ConflictError, ResourceNotFoundError } from '../errors';
@@ -37,6 +37,7 @@ import { hashPassword, comparePassword, respond, JWT, sendOtpToUser, verifyOtp, 
 // } from '../services/email';
 import variables from '../variables';
 import { createContactUS } from '../repository/contact_us';
+import pool from '../config/database.config';
 
 dotenv.config();
 
@@ -211,7 +212,7 @@ export const UserController = {
         throw new ResourceNotFoundError('You may want to signup with this email');
       }
       const compare = await comparePassword(params[1], existingUser.password);
-     
+
       if (!compare) {
         throw new BadRequestError('Kindly check the password');
       } else {
@@ -229,8 +230,7 @@ export const UserController = {
     }
   },
 
-  savePushToken: (): RequestHandler => async(req, res, next) => {
-
+  savePushToken: (): RequestHandler => async (req, res, next) => {
     const { userId, newPushToken } = req.body;
 
     try {
@@ -589,6 +589,85 @@ export const UserController = {
       const newContactUS = await createContactUS(params as Partial<Contact_US>);
       return respond(res, newContactUS, HttpStatus.CREATED);
     } catch (error) {
+      next(error);
+    }
+  },
+
+  getContactUsMessages: (): RequestHandler => async (req, res, next) => {
+    try {
+      const { page = 1, limit = 10 } = req.query; // Default: page 1, 10 results per page
+      const offset = (Number(page) - 1) * Number(limit);
+
+      const query = `
+      SELECT 
+          cu.id AS contact_id, 
+          cu.subject, 
+          cu.message, 
+          cu.created_at, 
+          cu.updated_at,
+          u.email, 
+          u.phone_number
+      FROM contact_us cu
+      JOIN users u ON cu.user_id = u.id
+      ORDER BY cu.created_at DESC
+      LIMIT $1 OFFSET $2;
+    `;
+
+      const { rows } = await pool.query(query, [Number(limit), offset]);
+
+      return respond(res, { currentPage: Number(page), perPage: Number(limit), data: rows }, HttpStatus.OK);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  getUserAddresses: (): RequestHandler => async (req, res, next) => {
+    try {
+      const userId = res.locals.user.id;
+
+      const query = `
+        SELECT 
+            u.id AS user_id,
+            u.state AS primary_state,
+            u.city AS primary_city,
+            u.address AS primary_address,
+            json_agg(
+                json_build_object(
+                    'id', a.id,
+                    'state', a.state,
+                    'city', a.city,
+                    'address', a.address,
+                    'created_at', a.created_at,
+                    'updated_at', a.updated_at
+                )
+            ) FILTER (WHERE a.id IS NOT NULL) AS secondary_addresses
+        FROM users u
+        LEFT JOIN addresses a ON u.id = a.user_id
+        WHERE u.id = $1
+        GROUP BY u.id, u.state, u.city, u.address;
+      `;
+
+      const { rows } = await pool.query(query, [userId]);
+
+      if (rows.length === 0) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      return respond(
+        res,
+        {
+          user_id: rows[0].user_id,
+          primary_address: {
+            state: rows[0].primary_state,
+            city: rows[0].primary_city,
+            address: rows[0].primary_address
+          },
+          secondary_addresses: rows[0].secondary_addresses || []
+        },
+        HttpStatus.OK
+      );
+    } catch (error) {
+      console.error('Error fetching addresses:', error);
       next(error);
     }
   }

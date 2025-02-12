@@ -1,13 +1,12 @@
 import { RequestHandler } from 'express';
 import HttpStatus from 'http-status-codes';
 import pool from '../config/database.config';
-import crypto from 'crypto';
 import { generateRandomCode, logger, respond } from '../utilities';
 import { getLastOrderService } from './order';
 import { sql } from '../database/sql';
 import { verifyPayment } from '../services/flutterwave';
 import { ORDER_STATUS } from '../constants';
-import { emailSender } from '@src/utilities/email.utility';
+import { emailSender } from '../utilities/email.utility';
 
 interface WebhookData {
   tx_ref: string;

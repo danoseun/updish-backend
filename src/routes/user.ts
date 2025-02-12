@@ -37,6 +37,7 @@ userRouter.post('/send-forgot-password', forgotPasswordSchema, UserController.fo
 userRouter.patch('/update-push-token', savePushTokenSchema, UserController.savePushToken());
 userRouter.patch('/accept-new-password', acceptNewPasswordSchema, UserController.acceptNewPassword());
 userRouter.post('/addresses', authenticate(), addressCreationSchema, UserController.createAddress());
+userRouter.get('/addresses', authenticate(), UserController.getUserAddresses());
 userRouter.post('/contact-us', authenticate(), createContactUsSchema, UserController.createContactUS());
 
 // userRouter.patch('/update-password', authenticate(), updatePasswordSchema, UserController.updatePassword());
