@@ -90,6 +90,10 @@ export const UserController = {
       if (!user) {
         return respond(res, `user with id of ${userId} does not exist`, HttpStatus.BAD_REQUEST);
       }
+      const kycDetailsFound = await findUserKYC([userId] as Partial<KYC>);
+      if (kycDetailsFound) {
+        return respond(res, 'customer already has KYC, consider updating existing KYC', HttpStatus.BAD_REQUEST);
+      }
       const kycDetails = await createKYC([userId, sex, health_goals, dietary_preferences, food_allergies, health_concerns] as Partial<KYC>);
       return respond(res, kycDetails, HttpStatus.CREATED);
     } catch (error) {
