@@ -99,7 +99,7 @@ export async function getActiveMealBundles(
         ) > 0
     `;
 
-    const queryParams: any[] = [healthGoals.map(goal => goal.toLowerCase())]; // Convert healthGoals to lowercase
+    const queryParams: any[] = [healthGoals.map((goal: string) => goal.toLowerCase())]; // Convert healthGoals to lowercase
 
     if (searchTerm) {
       bundlesQuery += ` AND b.name ILIKE $${queryParams.length + 1}`;  // Case-insensitive search for name

@@ -47,6 +47,12 @@ export const findItemByIdDetailedSchema = celebrate({
   })
 });
 
+export const getBundleByIdSchema = celebrate({
+  [Segments.PARAMS]: Joi.object().keys({
+    id: Joi.number().required()
+  })
+});
+
 const schema = Joi.object({
   name: Joi.string().required(),
   items: Joi.string().required(), // Items will be a string containing a JSON array
