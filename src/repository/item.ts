@@ -84,7 +84,7 @@ export async function getActiveMealBundles(
 
     // Start building dynamic query with search and category filters
     let bundlesQuery = `
-      SELECT b.id, b.name, b.health_impact, b.category, b.price,
+      SELECT b.id, b.name, b.is_extra, b.health_impact, b.category, b.price,
             json_agg(DISTINCT jsonb_build_object('id', bi.id, 'item_name', i.name, 'qty', bi.qty, 'created_at', bi.created_at)) AS bundle_items,
             json_agg(DISTINCT img.*) AS bundle_images
       FROM bundles b 

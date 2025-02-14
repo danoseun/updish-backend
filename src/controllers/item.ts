@@ -362,7 +362,7 @@ export const ItemController = {
     bi.updated_at AS bundle_item_updated_at,
     bi.item AS bundle_item_item_id,
     bi.bundle_id AS bundle_item_bundle_id,
-    i.name AS item_name,               -- Adding the name of the item here
+    i.name AS item_name,               
     bmi.id AS bundle_image_id,
     bmi.public_id AS bundle_image_public_id,
     bmi.image_url AS bundle_image_url,

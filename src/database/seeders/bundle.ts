@@ -20,7 +20,7 @@ const bundlesData = [
   [1, 'Early Bird', toPgArray(['Low Calorie', 'Weight Loss', 'Gain Weight']), toPgArray(['Breakfast']), '4.99', false, true],
   [1, 'Family Meal', toPgArray(['Increase Energy', 'High Protein', 'Manage Blood Sugar', 'Gain Weight']), toPgArray(['Lunch', 'Dinner']), '15.99', false, true],
   [1, 'Vegetarian Special', toPgArray(['High Fiber', 'Low Fat', 'Weight Loss']), toPgArray(['Lunch']), '9.99', false, true],
-  [1, 'Gourmet Dinner', toPgArray(['Low Calorie', 'High Protein', 'Weight Loss']), toPgArray(['Dinner']), '13.50', false, true]
+  [1, 'Gourmet Dinner', toPgArray(['Low Calorie', 'High Protein', 'Weight Loss']), toPgArray(['Dinner']), '13.50', true, true]
 ];
 
 const sql = format('INSERT INTO bundles (admin_id, name, health_impact, category, price, is_extra, is_active) VALUES %L returning id', bundlesData);
