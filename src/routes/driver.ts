@@ -1,0 +1,13 @@
+import { Router } from 'express';
+import { loginUserSchema } from '../validations/user';
+import { authenticate } from '../middleware/authenticate';
+import { DriverController } from '@src/controllers/driver';
+import { DeliveryController } from '@src/controllers/delivery';
+
+export const driverRouter = Router();
+driverRouter.post('/drivers/login', loginUserSchema, DriverController.loginDriver());
+driverRouter.post('/drivers/update-password', authenticate({ isDriver: true }), DriverController.changeDriverPassword());
+driverRouter.get('/drivers/delivery-trips', authenticate({ isDriver: true }), DeliveryController.fetchDeliveryTripsByDriver());
+driverRouter.get('/drivers/delivery-trips/notes/:code', authenticate({ isDriver: true }), DeliveryController.fetchDeliveryNotesByTripCode());
+driverRouter.patch('/drivers/accept-reject-trip', authenticate({ isDriver: true }), DriverController.acceptOrRejectDeliveryTripByDriver());
+driverRouter.patch('/drivers/confirm-delivery', authenticate({isDriver: true}), DriverController.confirmDelivery())

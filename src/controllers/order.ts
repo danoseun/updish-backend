@@ -7,6 +7,7 @@ import type { Order } from '../interfaces';
 import { generateRandomCode, respond } from '../utilities';
 import { cancelPaymentPlan, createPaymentPlan, generateVirtualAccount, initiatePayment } from '../services/flutterwave';
 import { ORDER_STATUS, uomMap } from '../constants';
+import { createDeliveryNotes } from '../repository/order';
 
 interface LastOrder {
   order: Order;
@@ -133,9 +134,9 @@ export const OrderController = {
     //   client.release();
     // }
 
-    const { meals } = req.body;
+    const { meals, delivery_type } = req.body;
 
-    const userId = res.locals.user.id
+    const userId = res.locals.user.id;
 
     if (!userId || !meals || !Array.isArray(meals) || meals.length === 0) {
       return respond(res, 'Invalid Request payload', HttpStatus.BAD_REQUEST);
@@ -192,7 +193,8 @@ export const OrderController = {
         meals.length,
         mealOrderAmount,
         orderCode,
-        ORDER_STATUS.CREATED
+        ORDER_STATUS.CREATED,
+        delivery_type
       ]);
 
       //@ts-ignore
@@ -268,7 +270,7 @@ export const OrderController = {
   },
 
   createTransferTypeOrder: (): RequestHandler => async (req, res, next) => {
-    const { userId, meals } = req.body;
+    const { userId, meals, delivery_type } = req.body;
 
     if (!userId || !meals || !Array.isArray(meals) || meals.length === 0) {
       return respond(res, 'Invalid Request payload', HttpStatus.BAD_REQUEST);
@@ -292,7 +294,8 @@ export const OrderController = {
         meals.length,
         mealOrderAmount,
         orderCode,
-        ORDER_STATUS.CREATED
+        ORDER_STATUS.CREATED,
+        delivery_type
       ]);
 
       //@ts-ignore
@@ -821,10 +824,10 @@ export const OrderController = {
       const payment_plan_id = activePaymentPlanResult.rows[0].payment_plan_id;
 
       // Fetch the existing order in-progress that has order_meals
-      const currentOrderResult = await getLastOrderService(userId, ORDER_STATUS.IN_PROGRESS);
+      const currentOrderResult = await getLastOrderService(userId, ORDER_STATUS.DELIVERING);
       console.log({ currentOrderResult });
-      if (!currentOrderResult && !currentOrderResult?.meals?.length) {
-        return respond(res, 'No current order_meal found', HttpStatus.NOT_FOUND);
+      if (!currentOrderResult || !currentOrderResult?.meals?.length) {
+        return respond(res, { message: 'No current order_meal found' }, HttpStatus.NOT_FOUND);
       }
 
       //we can use the number_of_meals here or the value from meals array
@@ -992,7 +995,7 @@ export const OrderController = {
       return respond(res, { message: 'Failed to cancel plan', data: cancelPlanResponse }, HttpStatus.BAD_REQUEST);
     } catch (error) {
       console.error('Error in someOtherEndpoint:', error);
-      return respond(res, { message: 'No active plan for this user' }, HttpStatus.BAD_GATEWAY);
+      return respond(res, { message: 'Could not create delivery notes' }, HttpStatus.BAD_GATEWAY);
     }
   }
 };

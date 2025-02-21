@@ -24,6 +24,9 @@ import { seedItems } from '../seeders/items';
 import { seedBundles } from '../seeders/bundle';
 import { seedBundleItems } from '../seeders/bundle_items';
 import { seedBundleImages } from '../seeders/bundle_images';
+import { createdriverTable } from '../models/driver';
+import { createDeliveryNoteTable } from '../models/delivery_note';
+import { createDeliveryTripTable } from '../models/delivery_trips';
 
 (async () => {
   try {
@@ -52,6 +55,9 @@ import { seedBundleImages } from '../seeders/bundle_images';
     await createSubscriptionTable();
     await createWebhookTable();
     await createContactUsTable();
+    await createdriverTable();
+    await createDeliveryTripTable();
+    await createDeliveryNoteTable();
     console.log('migration completed');
   } catch (error) {
     console.log(`ERROR IN MIGRATION ${error}`);
