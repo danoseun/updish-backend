@@ -270,7 +270,9 @@ export const OrderController = {
   },
 
   createTransferTypeOrder: (): RequestHandler => async (req, res, next) => {
-    const { userId, meals, delivery_type } = req.body;
+    const { meals, delivery_type } = req.body;
+
+    const userId = res.locals.user.id
 
     if (!userId || !meals || !Array.isArray(meals) || meals.length === 0) {
       return respond(res, 'Invalid Request payload', HttpStatus.BAD_REQUEST);
@@ -1007,7 +1009,7 @@ export const OrderController = {
 /** 
  * ORDER CREATION REQUEST
  * {
-    "userId": 1,
+    // "userId": 1,
     // "startDate": "2024-12-21",
     // "endDate": "2024-12-27",
     "meals": [
@@ -1104,3 +1106,9 @@ export const OrderController = {
   REDIRECT_URL after payment completion
   https://example_company.com/success?status=successful&tx_ref=TXREF_331273_1738227346167&transaction_id=8355329
  */
+
+  /**
+   * add address title
+   * seed address for Daniel's user
+   * password update
+   */

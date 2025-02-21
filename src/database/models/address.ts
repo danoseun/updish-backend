@@ -5,6 +5,7 @@ const addressTable = `DROP TABLE IF EXISTS addresses CASCADE;
         CREATE TABLE addresses (
             id SERIAL PRIMARY KEY NOT NULL,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            title CHARACTER VARYING(255),
             state CHARACTER VARYING(255),
             city CHARACTER VARYING(255),
             address TEXT,

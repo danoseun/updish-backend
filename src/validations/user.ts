@@ -1,5 +1,4 @@
 import { celebrate, Joi, Segments } from "celebrate";
-import { IdTokenClient } from "google-auth-library/build/src";
 
 export const checkPhoneNumberSchema = celebrate({
   [Segments.BODY]: Joi.object().keys({
@@ -95,6 +94,13 @@ export const acceptNewPasswordSchema = celebrate({
   }),
 });
 
+export const changePasswordSchema = celebrate({
+  [Segments.BODY]: Joi.object().keys({
+    currentPassword: Joi.string().trim().required(),
+    newPassword: Joi.string().trim().required()
+  }),
+});
+
 export const createKYCSchema = celebrate({
   [Segments.BODY]: Joi.object().keys({
     userId: Joi.number(),
@@ -126,6 +132,7 @@ export const fetchKYCSchema = celebrate(
 export const addressCreationSchema = celebrate(
   {
     [Segments.BODY]: Joi.object().keys({
+      title: Joi.string().trim().required(),
       state: Joi.string().trim().required(),
       city: Joi.string().trim().required(),
       address: Joi.string().trim().required()

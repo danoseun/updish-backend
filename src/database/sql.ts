@@ -1,7 +1,7 @@
 export const sql = {
   createUser:
     'INSERT INTO users (first_name, last_name, phone_number, email, password, age, state, city, address) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning *',
-  createAddress: 'INSERT INTO addresses (user_id, state, city, address) values ($1, $2, $3, $4) returning *',
+  createAddress: 'INSERT INTO addresses (user_id, title, state, city, address) values ($1, $2, $3, $4, $5) returning *',
   //createUserWithGoogleAuth: 'INSERT INTO users (first)',
   deactivateUser:
     'UPDATE users SET is_active = false, deactivated_at = $1, deletion_scheduled_at = $2 WHERE id = $3 RETURNING email, first_name, phone_number, is_active',

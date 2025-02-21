@@ -342,83 +342,93 @@ export const ItemController = {
   },
 
   getBundleById: (): RequestHandler => async (req, res, next) => {
+    const bundleId = parseInt(req.params.id);
+
+    const query = `
+    SELECT 
+    b.id AS bundle_id,
+    b.admin_id,
+    b.name AS bundle_name,
+    b.health_impact,
+    b.category,
+    b.price,
+    b.is_extra,
+    b.is_active,
+    b.created_at AS bundle_created_at,
+    b.updated_at AS bundle_updated_at,
+    bi.id AS bundle_item_id,
+    bi.qty AS bundle_item_qty,
+    bi.created_at AS bundle_item_created_at,
+    bi.updated_at AS bundle_item_updated_at,
+    bi.item AS bundle_item_item_id,
+    bi.bundle_id AS bundle_item_bundle_id,
+    i.name AS item_name,               
+    bmi.id AS bundle_image_id,
+    bmi.public_id AS bundle_image_public_id,
+    bmi.image_url AS bundle_image_url,
+    bmi.created_at AS bundle_image_created_at,
+    bmi.updated_at AS bundle_image_updated_at
+  FROM bundles b
+  LEFT JOIN bundle_items bi ON bi.bundle_id = b.id
+  LEFT JOIN items i ON i.id = bi.item        
+  LEFT JOIN bundle_images bmi ON bmi.bundle_id = b.id
+  WHERE b.id = $1
+  `;
+
     try {
-      const bundleId = parseInt(req.params.id);
+      // Execute the query
+      const result = await pool.query(query, [bundleId]);
 
-      const query = `
-        SELECT 
-            b.id AS bundle_id,
-            b.name AS bundle_name,
-            b.health_impact,
-            b.price,
-            b.is_active,
-            b.created_at AS bundle_created_at,
-            b.updated_at AS bundle_updated_at,
-            bi.id AS bundle_item_id,
-            bi.qty AS bundle_item_qty,
-            i.id AS item_id,
-            i.name AS item_name,
-            i.description AS item_description,
-            i.category AS item_category,
-            i.class_of_food AS item_class_of_food,
-            i.calories_per_uom AS item_calories,
-            ii.id AS image_id,
-            ii.public_id AS image_public_id,
-            ii.image_url AS image_url
-        FROM bundles b
-        JOIN bundle_items bi ON b.id = bi.bundle_id
-        JOIN items i ON bi.item = i.id
-        LEFT JOIN item_images ii ON i.id = ii.item_id
-        WHERE b.id = $1;
-      `;
-
-      const { rows } = await pool.query(query, [bundleId]);
-
-      if (rows.length === 0) {
-        return respond(res, 'bundle not found', HttpStatus.NOT_FOUND);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: 'Bundle not found' });
       }
 
-      // Transform the result into a nested structure
-      const bundle = {
-        id: rows[0].bundle_id,
-        name: rows[0].bundle_name,
-        health_impact: rows[0].health_impact,
-        price: rows[0].price,
-        is_active: rows[0].is_active,
-        created_at: rows[0].bundle_created_at,
-        updated_at: rows[0].bundle_updated_at,
-        bundle_items: []
-      };
-
-      rows.forEach((row) => {
-        let bundleItem = bundle.bundle_items.find((bi) => bi.id === row.bundle_item_id);
-        if (!bundleItem) {
-          bundleItem = {
-            id: row.bundle_item_id,
-            qty: row.bundle_item_qty,
-            item: {
-              id: row.item_id,
-              name: row.item_name,
-              description: row.item_description,
-              category: row.item_category,
-              class_of_food: row.class_of_food,
-              calories_per_uom: row.item_calories,
-              images: []
-            }
+      // Format the response
+      const bundle = result.rows.reduce((acc: any, row: any) => {
+        if (!acc.id) {
+          acc = {
+            id: row.bundle_id,
+            admin_id: row.admin_id,
+            name: row.bundle_name,
+            health_impact: row.health_impact,
+            category: row.category,
+            price: row.price,
+            is_extra: row.is_extra,
+            is_active: row.is_active,
+            created_at: row.bundle_created_at,
+            updated_at: row.bundle_updated_at,
+            bundle_items: [],
+            bundle_images: []
           };
-          bundle.bundle_items.push(bundleItem);
         }
 
-        if (row.image_id) {
-          bundleItem.item.images.push({
-            id: row.image_id,
-            public_id: row.image_public_id,
-            image_url: row.image_url
+        // Add bundle items if present
+        if (row.bundle_item_id) {
+          acc.bundle_items.push({
+            id: row.bundle_item_id,
+            item_id: row.bundle_item_item_id,
+            item_name: row.item_name,
+            qty: row.bundle_item_qty,
+            created_at: row.bundle_item_created_at,
+            updated_at: row.bundle_item_updated_at
           });
         }
-      });
 
-      return respond(res, bundle, HttpStatus.OK);
+        // Add bundle images if present
+        if (row.bundle_image_id) {
+          acc.bundle_images.push({
+            id: row.bundle_image_id,
+            public_id: row.bundle_image_public_id,
+            image_url: row.bundle_image_url,
+            created_at: row.bundle_image_created_at,
+            updated_at: row.bundle_image_updated_at
+          });
+        }
+
+        return acc;
+      }, {});
+
+      return res.status(200).json(bundle);
     } catch (error) {
       next(error);
     }

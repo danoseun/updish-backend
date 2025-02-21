@@ -29,6 +29,16 @@ export interface User_Image {
   public_id: string;
   image_url: string;
 }
+  export interface Address {
+    id?: number;
+    user_id: number;
+    title: string;
+    state: string;
+    city: string;
+    address: string;
+    created_at?: Date;
+    updated_at?: Date;
+  }
 
 export interface Address {
   id?: number;
