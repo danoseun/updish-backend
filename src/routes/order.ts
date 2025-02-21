@@ -2,12 +2,13 @@ import { Router } from 'express';
 
 import { OrderController } from '../controllers/order';
 import { authenticate, restrictToWeekend } from '../middleware/authenticate';
+import { orderCreationSchema } from '../validations/order';
 
 export const orderRouter = Router();
 
 //should be authenticated via authenticate()
-orderRouter.post('/orders', authenticate(), OrderController.createOrder());
-orderRouter.post('/orders/payment/transfer', authenticate(), OrderController.createTransferTypeOrder());
+orderRouter.post('/orders', authenticate(), orderCreationSchema, OrderController.createOrder());
+orderRouter.post('/orders/payment/transfer', authenticate(), orderCreationSchema, OrderController.createTransferTypeOrder());
 orderRouter.get('/orders', OrderController.getOrders());
 orderRouter.get('/demand-summary', OrderController.demandSummary());
 orderRouter.get('/orders/details/:id', OrderController.getOrderDetails());

@@ -33,6 +33,7 @@ export interface User {
   export interface Address {
     id?: number;
     user_id: number;
+    title: string;
     state: string;
     city: string;
     address: string;

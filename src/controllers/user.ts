@@ -456,25 +456,25 @@ export const UserController = {
     }
   },
 
-  updatePassword: (): RequestHandler => async (req, res, next) => {
-    // const { oldPassword, newPassword } = req.body;
-    // const userId = res.locals.user.id;
-    // try {
-    //   const user = await findUserById([userId] as Partial<User>);
-    //   if (!user) {
-    //     throw new BadRequestError('no user was found for this account');
-    //   }
-    //   const compare = await comparePassword(oldPassword, user.password);
-    //   if (!compare) {
-    //     throw new BadRequestError('old password is incorrect');
-    //   }
-    //   const newPass = await hashPassword(newPassword);
-    //   const updatedUser = await updateUserPassword([newPass, userId] as Partial<User>);
-    //   delete updatedUser.password;
-    //   return respond(res, { message: 'Password updated successfully', updatedUser }, HttpStatus.OK);
-    // } catch (error) {
-    //   next(error);
-    // }
+  changePassword: (): RequestHandler => async (req, res, next) => {
+    const { currentPassword, newPassword } = req.body;
+    const userId = res.locals.user.id;
+    try {
+      const user = await findUserById([userId] as Partial<User>);
+      if (!user) {
+        throw new BadRequestError('no user was found for this account');
+      }
+      const compare = await comparePassword(currentPassword, user.password);
+      if (!compare) {
+        throw new BadRequestError('old password is incorrect');
+      }
+      const newPass = await hashPassword(newPassword);
+      const updatedUser = await updateUserPassword([newPass, userId] as Partial<User>);
+      delete updatedUser.password;
+      return respond(res, { message: 'Password updated successfully', updatedUser }, HttpStatus.OK);
+    } catch (error) {
+      next(error);
+    }
   },
 
   updateUser: (): RequestHandler => async (req, res, next) => {
@@ -573,8 +573,8 @@ export const UserController = {
   // }
   createAddress: (): RequestHandler => async (req, res, next) => {
     const userId = res.locals.user.id;
-    const { state, city, address } = req.body;
-    const params = [userId, state, city, address];
+    const { title, state, city, address } = req.body;
+    const params = [userId, title, state, city, address];
 
     try {
       const newAddress = await createAddress(params as Partial<Address>);
@@ -638,6 +638,7 @@ export const UserController = {
             json_agg(
                 json_build_object(
                     'id', a.id,
+                    'title', a.title,
                     'state', a.state,
                     'city', a.city,
                     'address', a.address,

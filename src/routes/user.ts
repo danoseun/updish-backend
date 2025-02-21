@@ -2,7 +2,7 @@ import { Router } from 'express';
 import passport from 'passport';
 import fileUpload from 'express-fileupload';
 
-import { checkPhoneNumberSchema, verifyUserPhoneNumberSchema, loginUserSchema, createUserWithPhoneNumberSchema, createUserWithGoogleAuthSchema, forgotPasswordSchema, acceptNewPasswordSchema, createKYCSchema, fetchKYCSchema, addressCreationSchema, savePushTokenSchema, googleAuthSchema, createContactUsSchema } from '../validations/user';
+import { checkPhoneNumberSchema, verifyUserPhoneNumberSchema, loginUserSchema, createUserWithPhoneNumberSchema, createUserWithGoogleAuthSchema, forgotPasswordSchema, acceptNewPasswordSchema, createKYCSchema, fetchKYCSchema, addressCreationSchema, savePushTokenSchema, googleAuthSchema, createContactUsSchema, changePasswordSchema } from '../validations/user';
 
 import { UserController } from '../controllers/user';
 import { authenticate } from '../middleware/authenticate';
@@ -33,9 +33,9 @@ userRouter.post('/google-auth', googleAuthSchema, UserController.googleAuth());
 // userRouter.patch('/uploads', authenticate(), fileUpload({ useTempFiles: true, limits: { fileSize: 10 * 1024 * 1024 } }), UserController.uploadPhoto());
 
 userRouter.post('/send-forgot-password', forgotPasswordSchema, UserController.forgotPassword());
-
-userRouter.patch('/update-push-token', savePushTokenSchema, UserController.savePushToken());
 userRouter.patch('/accept-new-password', acceptNewPasswordSchema, UserController.acceptNewPassword());
+userRouter.patch('/change-password', authenticate(), changePasswordSchema, UserController.changePassword());
+userRouter.patch('/update-push-token', savePushTokenSchema, UserController.savePushToken());
 userRouter.post('/addresses', authenticate(), addressCreationSchema, UserController.createAddress());
 userRouter.get('/addresses', authenticate(), UserController.getUserAddresses());
 userRouter.post('/contact-us', authenticate(), createContactUsSchema, UserController.createContactUS());
