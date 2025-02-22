@@ -165,8 +165,19 @@ export const verifyPayment = async (id: number) => {
       },
       url: `${variables.services.flutterwave.raveBaseUrl}/v3/transactions/${id}/verify`
     });
-    console.log({ response });
-    return response.data;
+
+    console.log('FROM VERIFY PAYMENT', { response });
+
+    if (response.data.status === 'success') {
+      return {
+        status: 'success',
+        message: 'Payment verified successfully.',
+        data: response.data.data
+      };
+    } else {
+      console.log({ response: response.data }, "INSIDE VERIFY ERROR");
+      throw new Error('Failed to verify payment');
+    }
   } catch (error) {
     return {
       status: 'error',

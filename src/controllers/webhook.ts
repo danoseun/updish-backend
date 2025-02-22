@@ -118,10 +118,10 @@ export const WebHookController = {
           newEndDate.setDate(newEndDate.getDate() + 7);
 
           const newOrderResult = await client.query(
-            `INSERT INTO orders (user_id, start_date, end_date, payment_plan_id, number_of_meals, total_price, code, status)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            `INSERT INTO orders (user_id, start_date, end_date, payment_plan_id, number_of_meals, total_price, code, status, delivery_type)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                  RETURNING id`,
-            [userId, newStartDate, newEndDate, payment_plan_id, lastCreatedOrderResult.order.number_of_meals, amount, orderCode, 'paid']
+            [userId, newStartDate, newEndDate, payment_plan_id, lastCreatedOrderResult.order.number_of_meals, amount, orderCode, 'paid', lastCreatedOrderResult.order.delivery_type]
           );
 
           const newOrderId = newOrderResult.rows[0].id;
