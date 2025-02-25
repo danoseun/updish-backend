@@ -9,7 +9,7 @@ dotenv.config();
 export class JWT {
   private static secret: jwt.Secret = variables.auth.secret;
 
-  public static encode(payload: Partial<User>, options?: Partial<jwt.SignOptions>): string {
+  public static encode<T>(payload: Partial<T>, options?: Partial<jwt.SignOptions>): string {
     console.log('secret', this.secret, '', process.env.JWT_SECRET);
     try {
       const token = jwt.sign(payload, this.secret, { expiresIn: variables.auth.jwtExpiryTime || '30d', ...options });

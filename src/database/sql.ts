@@ -82,8 +82,28 @@ export const sql = {
   `,
   fetchPendingOrders: 'SELECT * FROM orders where status = $1',
   updateOrderStatusByTransactionRef: 'UPDATE orders SET status = $1, updated_at = $2 WHERE transaction_ref = $3 RETURNING *;',
-  createOrder: 'INSERT INTO orders (user_id, start_date, end_date, payment_plan_id, number_of_meals, total_price, code, status) values ($1, $2, $3, $4, $5, $6, $7, $8) returning *',
-  createOrderMeals: 'INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, address, code) values ($1, $2, $3, $4, $5, $6, $7, $8)',
-  createContactUS:
-  'INSERT INTO contact_us (user_id, subject, message) values ($1, $2, $3) returning *'
+  createOrder:
+    'INSERT INTO orders (user_id, start_date, end_date, payment_plan_id, number_of_meals, total_price, code, status, delivery_type) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning *',
+  createOrderMeals:
+    'INSERT INTO order_meals (order_id, date, category, bundle_id, quantity, delivery_time, address, code) values ($1, $2, $3, $4, $5, $6, $7, $8)',
+  createContactUS: 'INSERT INTO contact_us (user_id, subject, message) values ($1, $2, $3) returning *',
+  fetchDriverByEmail: 'SELECT * FROM drivers WHERE email = $1',
+  createDriver:
+    'INSERT INTO drivers (email, first_name, last_name, password, phone_number, third_party_logistics) values ($1, $2, $3, $4, $5, $6) returning *',
+  fetchDriverById: 'SELECT * FROM drivers WHERE id = $1',
+  updateDriverPassword: 'UPDATE drivers SET password = $1, is_password_updated = $2, updated_at = NOW() WHERE id = $3 returning *',
+  fetchOrderMealsByOrderId: 'SELECT * FROM order_meals WHERE order_id = $1',
+  fetchDeliveryNotes: `SELECT dn.*, om.delivery_time, om.date, b.name AS bundle_name
+    FROM delivery_notes dn
+    JOIN order_meals om ON dn.order_meal_id = om.id
+    JOIN bundles b ON om.bundle_id = b.id
+    WHERE om.date = $1
+    AND om.delivery_time = $2
+    AND dn.status = $3
+    ORDER BY dn.customer_name`,
+  createDeliveryTrip: `INSERT INTO delivery_trips (code) VALUES ($1) RETURNING *`,
+  fetchAssignedDeliveryTrips: 'SELECT * FROM delivery_trips WHERE driver_id = $1 AND status = $2',
+  fetchDeliveryNotesByTrip: `SELECT dn.*, om.date, om.delivery_time, om.category FROM delivery_notes dn
+    JOIN order_meals om ON om.id = dn.order_meal_id
+    WHERE delivery_trip_id = $1`
 };

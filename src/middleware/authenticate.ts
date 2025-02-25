@@ -1,11 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import { JsonWebTokenError, NotBeforeError, TokenExpiredError } from 'jsonwebtoken';
-import { findUserById, findAdminById, findAdminByEmail } from '../repository/user';
+import { findUserById, findAdminById, findAdminByEmail, findDriverById } from '../repository/user';
 import { BadRequestError, ForbiddenError, NotAuthenticatedError, NotAuthorizedError } from '../errors';
 import { JWT } from '../utilities';
-import { User, Admin } from '../interfaces';
+import { User, Admin, Driver } from '../interfaces';
 
-export const authenticate = () => {
+interface Param {
+  isDriver?: boolean;
+}
+
+export const authenticate = (param?: Param) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     const { authorization } = req.headers;
 
@@ -21,7 +25,8 @@ export const authenticate = () => {
       }
 
       const decoded = JWT.decode(token);
-      const user = await findUserById([decoded.id] as Partial<User>);
+
+      let user = param && param.isDriver ? await findDriverById([decoded.id] as Partial<Driver>) : await findUserById([decoded.id] as Partial<User>);
 
       if (!user) {
         return next(new NotAuthenticatedError('Invalid token'));

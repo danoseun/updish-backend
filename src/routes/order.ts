@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 import { OrderController } from '../controllers/order';
 import { authenticate, restrictToWeekend } from '../middleware/authenticate';
+import { DeliveryController } from '../controllers/delivery';
 import { orderCreationSchema } from '../validations/order';
 
 export const orderRouter = Router();
@@ -16,7 +17,7 @@ orderRouter.get('/orders/:code', OrderController.getSalesOrder());
 orderRouter.get('/last-order/:code', authenticate(), OrderController.getLastOrder());
 orderRouter.patch('/update-order', authenticate(), OrderController.updateOrderMeals());
 orderRouter.post('/payment-plans/cancel', authenticate(), OrderController.cancelPaymentPlan())
-
+orderRouter.get('/order/delivery-notes/:orderId', authenticate(), DeliveryController.createDeliveryNotes())
 /** GET /orders
  * /orders?page=1&limit=20
  * /orders?date=2024-12-21&page=2&limit=10

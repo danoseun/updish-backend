@@ -20,6 +20,7 @@ import { logger } from './utilities'
 import variables from './variables';
 import { connect } from './config/database.config';
 import { webhookRouter } from './routes/webhook';
+import { driverRouter } from './routes/driver';
 
 // Require Passport midleware - without this your app wont work
 //require('./middleware/passport');
@@ -115,6 +116,7 @@ app.use('/v1', itemRouter);
 app.use('/v1', orderRouter);
 app.use('/v1', portalRouter);
 app.use('/v1', webhookRouter);
+app.use('/v1', driverRouter);
 
 app.use(errorMiddleware);
 

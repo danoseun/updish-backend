@@ -1,6 +1,7 @@
 import axiosService from './axios';
 import variables from '../variables';
 import crypto from 'crypto';
+import { BadRequestError } from '@src/errors';
 
 // export const callVerifyRaveTrx: any(trxRef: string) => {
 //     try {
@@ -99,7 +100,7 @@ export const createPaymentPlan = async (amount: number, plan_name: string, inter
       };
     } else {
       console.log({ response: response.data });
-      throw new Error('Failed to create payment plan');
+      throw new BadRequestError('Failed to create payment plan');
     }
   } catch (error) {
     return {
@@ -145,7 +146,7 @@ export const initiatePayment = async (payload: Partial<InitiatePayment>) => {
       };
     } else {
       console.log({ response: response.data });
-      throw new Error('Failed to initiate payment');
+      throw new BadRequestError('Failed to initiate payment');
     }
   } catch (error) {
     return {
@@ -165,8 +166,19 @@ export const verifyPayment = async (id: number) => {
       },
       url: `${variables.services.flutterwave.raveBaseUrl}/v3/transactions/${id}/verify`
     });
-    console.log({ response });
-    return response.data;
+
+    console.log('FROM VERIFY PAYMENT', { response });
+
+    if (response.data.status === 'success') {
+      return {
+        status: 'success',
+        message: 'Payment verified successfully.',
+        data: response.data.data
+      };
+    } else {
+      console.log({ response: response.data }, "INSIDE VERIFY ERROR");
+      throw new BadRequestError('Failed to verify payment');
+    }
   } catch (error) {
     return {
       status: 'error',
@@ -224,7 +236,7 @@ export const generateVirtualAccount = async (payload: { email: string; amount: n
         transaction_ref: tx_ref
       };
     } else {
-      throw new Error('Failed to generate virtual account');
+      throw new BadRequestError('Failed to generate virtual account');
     }
   } catch (error) {
     return {

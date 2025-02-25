@@ -25,11 +25,16 @@ const orderSchema = Joi.object({
 });
 
 // Define schema for the main array of meals
-const mealSchema = Joi.array().items(orderSchema).required();
+// const mealSchema = Joi.array().items(orderSchema).required();
+
+const createOrderSchema = Joi.object({
+  delivery_type: Joi.string().valid('one_time', 'multiple').required(),
+  meals: Joi.array().items(orderSchema).required()
+})
 
 // Function to validate the request body
 export const orderCreationSchema = (req: Request, res: Response, next: NextFunction) => {
-  const { error } = mealSchema.validate(req.body.meals);
+  const { error } = createOrderSchema.validate(req.body);
   if (error) {
     return respond(res, { error: error.details }, HttpStatus.BAD_REQUEST);
   }

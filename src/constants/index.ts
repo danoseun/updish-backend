@@ -6,8 +6,25 @@ export enum SMS_STATUS {
 export enum ORDER_STATUS {
   CREATED = 'created', //-> default
   PENDING = 'pending', //-> payment has been made
-  IN_PROGRESS = 'in-progress',
+  // IN_PROGRESS = 'in-progress',
   PAID = 'paid', //->webhook has been sent and payment has been confirmed
+  DELIVERING = 'delivering',
+  COMPLETED = 'completed'
+}
+
+export enum DELIVERY_NOTES_STATUS {
+  PENDING = 'pending',
+  SUBMITTED = 'submitted',
+  DISPATCHED = 'dispatched',
+  DELIVERED = 'delivered'
+}
+
+export enum DELIVERY_TRIPS_STATUS {
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
+  DISPATCHED = 'dispatched',
+  REJECTED = 'rejected',
+  DELIVERED = 'delivered',
   COMPLETED = 'completed'
 }
 

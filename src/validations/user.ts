@@ -167,3 +167,18 @@ export const createContactUsSchema = celebrate(
     abortEarly: false
   }
 );
+
+export const createDriverSchema = celebrate(
+  {
+    [Segments.BODY]: Joi.object().keys({
+      first_name: Joi.string().trim().required(),
+      last_name: Joi.string().required().trim(),
+      phone_number: Joi.string().trim().required(),
+      email: Joi.string().trim().required(),
+      third_party_logistics: Joi.string().trim().required(),
+    }),
+  },
+  {
+    abortEarly: false,
+  },
+);

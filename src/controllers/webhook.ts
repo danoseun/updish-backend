@@ -7,6 +7,7 @@ import { sql } from '../database/sql';
 import { verifyPayment } from '../services/flutterwave';
 import { ORDER_STATUS } from '../constants';
 import { emailSender } from '../utilities/email.utility';
+import { createDeliveryNotes } from '../repository/order';
 
 interface WebhookData {
   tx_ref: string;
@@ -88,6 +89,9 @@ export const WebHookController = {
 
           await client.query(`UPDATE orders SET status = 'paid' WHERE id = $1`, [orderId]);
 
+          // Create delivery notes
+          await createDeliveryNotes(client, userId, orderId);
+
           // Notify customer(method needs to be added)
           await emailSender({
             subject: 'Welcome to Updish!',
@@ -102,7 +106,7 @@ export const WebHookController = {
 
           const orderCode = generateRandomCode();
 
-          const lastCreatedOrderResult = await getLastOrderService(userId, ORDER_STATUS.IN_PROGRESS);
+          const lastCreatedOrderResult = await getLastOrderService(userId, ORDER_STATUS.DELIVERING);
 
           if (verifyPaymentResponse.data.amount === lastCreatedOrderResult.order.total_price && verifyPaymentResponse.data.currency === 'NGN') {
             respond(res, { message: '' }, HttpStatus.OK);
@@ -114,10 +118,10 @@ export const WebHookController = {
           newEndDate.setDate(newEndDate.getDate() + 7);
 
           const newOrderResult = await client.query(
-            `INSERT INTO orders (user_id, start_date, end_date, payment_plan_id, number_of_meals, total_price, code, status)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            `INSERT INTO orders (user_id, start_date, end_date, payment_plan_id, number_of_meals, total_price, code, status, delivery_type)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                  RETURNING id`,
-            [userId, newStartDate, newEndDate, payment_plan_id, lastCreatedOrderResult.order.number_of_meals, amount, orderCode, 'paid']
+            [userId, newStartDate, newEndDate, payment_plan_id, lastCreatedOrderResult.order.number_of_meals, amount, orderCode, 'paid', lastCreatedOrderResult.order.delivery_type]
           );
 
           const newOrderId = newOrderResult.rows[0].id;
@@ -145,6 +149,9 @@ export const WebHookController = {
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
             [userId, newOrderId, newStartDate, newEndDate, payment_plan_id, tx_ref, amount, 'paid']
           );
+
+          // Create delivery notes
+          await createDeliveryNotes(client, userId, newOrderId);
 
           // Notify customer(needs to be added)
           await emailSender({

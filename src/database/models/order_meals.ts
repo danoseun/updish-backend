@@ -1,7 +1,7 @@
 import pool from '../../config/database.config';
 import { logger } from '../../utilities';
 
-const orderExtraTable = `DROP TABLE IF EXISTS order_meals CASCADE;
+const orderMealsTable = `DROP TABLE IF EXISTS order_meals CASCADE;
             CREATE TABLE order_meals (
                 id SERIAL PRIMARY KEY,
                 order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
@@ -21,7 +21,7 @@ const orderExtraTable = `DROP TABLE IF EXISTS order_meals CASCADE;
  */
 export async function createorderMealsTable(): Promise<void> {
   try {
-    const create = await pool.query(orderExtraTable);
+    const create = await pool.query(orderMealsTable);
     console.log(`orderMealsTable: ${create[0].command}PED and ${create[1].command}D`);
     logger.info(`orderMealsTable: ${create[0].command}PED and ${create[1].command}D`);
   } catch (error) {

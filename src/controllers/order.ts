@@ -7,6 +7,8 @@ import type { Order } from '../interfaces';
 import { generateRandomCode, respond } from '../utilities';
 import { cancelPaymentPlan, createPaymentPlan, generateVirtualAccount, initiatePayment } from '../services/flutterwave';
 import { ORDER_STATUS, uomMap } from '../constants';
+import { createDeliveryNotes } from '../repository/order';
+import { BadRequestError } from '@src/errors';
 
 interface LastOrder {
   order: Order;
@@ -47,7 +49,7 @@ export const getLastOrderService = async (userId: number, status: ORDER_STATUS):
     return { order, meals };
   } catch (error) {
     console.error('Error fetching last order:', error);
-    throw new Error('Failed to fetch last order');
+    throw new BadRequestError('Failed to fetch last order');
   } finally {
     client.release();
   }
@@ -133,9 +135,9 @@ export const OrderController = {
     //   client.release();
     // }
 
-    const { meals } = req.body;
+    const { meals, delivery_type } = req.body;
 
-    const userId = res.locals.user.id
+    const userId = res.locals.user.id;
 
     if (!userId || !meals || !Array.isArray(meals) || meals.length === 0) {
       return respond(res, 'Invalid Request payload', HttpStatus.BAD_REQUEST);
@@ -192,7 +194,8 @@ export const OrderController = {
         meals.length,
         mealOrderAmount,
         orderCode,
-        ORDER_STATUS.CREATED
+        ORDER_STATUS.CREATED,
+        delivery_type
       ]);
 
       //@ts-ignore
@@ -268,7 +271,7 @@ export const OrderController = {
   },
 
   createTransferTypeOrder: (): RequestHandler => async (req, res, next) => {
-    const { meals } = req.body;
+    const { meals, delivery_type } = req.body;
 
     const userId = res.locals.user.id
 
@@ -294,7 +297,8 @@ export const OrderController = {
         meals.length,
         mealOrderAmount,
         orderCode,
-        ORDER_STATUS.CREATED
+        ORDER_STATUS.CREATED,
+        delivery_type
       ]);
 
       //@ts-ignore
@@ -823,10 +827,9 @@ export const OrderController = {
       const payment_plan_id = activePaymentPlanResult.rows[0].payment_plan_id;
 
       // Fetch the existing order in-progress that has order_meals
-      const currentOrderResult = await getLastOrderService(userId, ORDER_STATUS.IN_PROGRESS);
-      console.log({ currentOrderResult });
-      if (!currentOrderResult && !currentOrderResult?.meals?.length) {
-        return respond(res, 'No current order_meal found', HttpStatus.NOT_FOUND);
+      const currentOrderResult = await getLastOrderService(userId, ORDER_STATUS.DELIVERING);
+      if (!currentOrderResult || !currentOrderResult?.meals?.length) {
+        return respond(res, { message: 'No current order_meal found' }, HttpStatus.NOT_FOUND);
       }
 
       //we can use the number_of_meals here or the value from meals array
@@ -838,7 +841,6 @@ export const OrderController = {
       }
 
       // check that the new order price still matches the payment_plan_amount
-      console.log({ mealOrderAmount });
       if (mealOrderAmount != activePaymentPlanResult.rows[0].amount) {
         return respond(res, `Order cost should not exceed payment plan`, HttpStatus.BAD_REQUEST);
       }
@@ -848,12 +850,12 @@ export const OrderController = {
         userId,
         payment_plan_id
       ]);
-      console.log({ upcomingOrder });
+
       if (!upcomingOrder.rows.length) {
         return respond(res, `You have not been charged for the upcoming order, please check back.`, HttpStatus.BAD_REQUEST);
       }
 
-      const orderId = upcomingOrder.rows[0].id;
+      const upcomingOrderId = upcomingOrder.rows[0].id;
 
       // check that time difference between time of update and start_date of upcoming meal is >=24 hrs
       const upcomingOrderStartDateString = new Date(upcomingOrder.rows[0].start_date).toISOString();
@@ -923,9 +925,8 @@ export const OrderController = {
       //   ]);
       // }
 
-      // Delete existing records
-      await client.query('DELETE FROM order_meals WHERE order_id = $1', [orderId]);
-
+      // Delete existing order_meals records. It should cascade to delete delivery_notes as well
+      await client.query('DELETE FROM order_meals WHERE order_id = $1', [upcomingOrderId]);
       // Insert new records (Batch Insert)
       const values = meals
         .map(
@@ -935,7 +936,7 @@ export const OrderController = {
         .join(', ');
 
       const params = [
-        orderId,
+        upcomingOrderId,
         ...meals.flatMap(({ category, bundleId, quantity, date, delivery_time, address }) => [
           date,
           category,
@@ -953,6 +954,9 @@ export const OrderController = {
       `;
 
       await client.query(query, params);
+
+      // insert new delivery_notes
+      await createDeliveryNotes(client, userId, upcomingOrderId)
 
       await client.query('COMMIT');
       respond(res, { message: 'Order meals updated successfully' }, HttpStatus.OK);
@@ -994,7 +998,7 @@ export const OrderController = {
       return respond(res, { message: 'Failed to cancel plan', data: cancelPlanResponse }, HttpStatus.BAD_REQUEST);
     } catch (error) {
       console.error('Error in someOtherEndpoint:', error);
-      return respond(res, { message: 'No active plan for this user' }, HttpStatus.BAD_GATEWAY);
+      return respond(res, { message: 'Could not create delivery notes' }, HttpStatus.BAD_GATEWAY);
     }
   }
 };
