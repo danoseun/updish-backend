@@ -8,6 +8,7 @@ import { generateRandomCode, respond } from '../utilities';
 import { cancelPaymentPlan, createPaymentPlan, generateVirtualAccount, initiatePayment } from '../services/flutterwave';
 import { ORDER_STATUS, uomMap } from '../constants';
 import { createDeliveryNotes } from '../repository/order';
+import { BadRequestError } from '@src/errors';
 
 interface LastOrder {
   order: Order;
@@ -48,7 +49,7 @@ export const getLastOrderService = async (userId: number, status: ORDER_STATUS):
     return { order, meals };
   } catch (error) {
     console.error('Error fetching last order:', error);
-    throw new Error('Failed to fetch last order');
+    throw new BadRequestError('Failed to fetch last order');
   } finally {
     client.release();
   }

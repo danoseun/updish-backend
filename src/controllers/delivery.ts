@@ -22,7 +22,7 @@ export const DeliveryController = {
       return respond(res, { message: 'Delivery notes created', data: deliveryNotes }, HttpStatus.OK);
     } catch (error) {
       console.error('Error in someOtherEndpoint:', error);
-      return respond(res, error.message || 'could not create delivery note', HttpStatus.BAD_GATEWAY);
+      next(error);
     }
   },
 
@@ -39,7 +39,7 @@ export const DeliveryController = {
       return respond(res, { message: 'Delivery notes fetched successfully', data: deliveryNotesResults.rows }, HttpStatus.OK);
     } catch (error) {
       console.error('Error in someOtherEndpoint:', error);
-      return respond(res, { message: 'Could not fetch delivery notes' }, HttpStatus.BAD_GATEWAY);
+      next(error);
     }
   },
 
@@ -123,7 +123,7 @@ export const DeliveryController = {
       return respond(res, { data: result.rows }, HttpStatus.OK);
     } catch (error) {
       console.error('Error in someOtherEndpoint:', error);
-      return respond(res, error.message || 'Could not not assign driver to this trip', HttpStatus.BAD_GATEWAY);
+      next(error);
     }
   },
 
@@ -139,7 +139,7 @@ export const DeliveryController = {
       respond(res, { message: 'Delivery trips fetched successfully', data: deliveryTripsResults.rows }, HttpStatus.OK);
     } catch (error) {
       console.error('Error in someOtherEndpoint:', error);
-      return respond(res, { message: 'Could not fetch delivery trips' }, HttpStatus.BAD_GATEWAY);
+      next(error);
     }
   },
 
@@ -163,7 +163,7 @@ export const DeliveryController = {
       respond(res, { message: 'Delivery notes fetched successfully', data: deliveryNotesResults.rows }, HttpStatus.OK);
     } catch (error) {
       console.error('Error in someOtherEndpoint:', error);
-      return respond(res, { message: 'Could not fetch delivery notes for this trip' }, HttpStatus.BAD_GATEWAY);
+      next(error);
     }
   }
 };

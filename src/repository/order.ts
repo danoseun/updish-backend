@@ -20,11 +20,11 @@ export const fetchPendingOrders = async (filters: Partial<Order>): Promise<Order
 
 export const updateOrderStatusByTransactionRef = async (transactionRef: string, status: string): Promise<Order> => {
   if (!transactionRef) {
-    throw new Error('Transaction reference is required.');
+    throw new BadRequestError('Transaction reference is required.');
   }
 
   if (!status) {
-    throw new Error('Order status is required.');
+    throw new BadRequestError('Order status is required.');
   }
 
   const values = [status, new Date(), transactionRef];
@@ -39,7 +39,7 @@ export const updateOrderStatusByTransactionRef = async (transactionRef: string, 
     return rows[0]; // Return the updated order
   } catch (error) {
     console.error('Error updating order status:', error);
-    throw new Error('Failed to update order status.');
+    throw new BadRequestError('Failed to update order status.');
   }
 };
 
@@ -87,7 +87,7 @@ export const createDeliveryNotes = async (client: PoolClient, userId: number, or
     return deliveryNotes.rows;
   } catch (error) {
     console.error('Error creating delivery notes:', error);
-    throw new Error(error.message || error || 'Failed to create delivery notes.');
+    throw new BadRequestError(error.message || error || 'Failed to create delivery notes.');
   }
 };
 
