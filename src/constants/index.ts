@@ -16,7 +16,8 @@ export enum DELIVERY_NOTES_STATUS {
   PENDING = 'pending',
   SUBMITTED = 'submitted',
   DISPATCHED = 'dispatched',
-  DELIVERED = 'delivered'
+  DELIVERED = 'delivered',
+  CANCELED  = 'canceled'
 }
 
 export enum DELIVERY_TRIPS_STATUS {

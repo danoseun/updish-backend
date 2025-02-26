@@ -10,4 +10,4 @@ driverRouter.post('/drivers/update-password', authenticate({ isDriver: true }), 
 driverRouter.get('/drivers/delivery-trips', authenticate({ isDriver: true }), DeliveryController.fetchDeliveryTripsByDriver());
 driverRouter.get('/drivers/delivery-trips/notes/:code', authenticate({ isDriver: true }), DeliveryController.fetchDeliveryNotesByTripCode());
 driverRouter.patch('/drivers/accept-reject-trip', authenticate({ isDriver: true }), DriverController.acceptOrRejectDeliveryTripByDriver());
-driverRouter.patch('/drivers/confirm-delivery', authenticate({isDriver: true}), DriverController.confirmDelivery())
+driverRouter.patch('/drivers/update-delivery', authenticate({isDriver: true}), DriverController.updateDelivery())
