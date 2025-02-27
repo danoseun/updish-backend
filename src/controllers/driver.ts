@@ -195,16 +195,20 @@ export const DriverController = {
     }
   },
 
-  confirmDelivery: (): RequestHandler => async (req, res, next) => {
-    const { driverId, deliveryNoteCode } = req.query;
+  updateDelivery: (): RequestHandler => async (req, res, next) => {
+    const { deliveryNoteCode, action } = req.query as { deliveryNoteCode: string; action: 'confirm' | 'cancel' };
     const client = await pool.connect();
 
     try {
       await client.query('BEGIN');
 
+      if (!deliveryNoteCode || !action) {
+        throw new BadRequestError('delivery note code and action expected');
+      }
+
       const deliveryNote = await client.query('SELECT * FROM delivery_notes WHERE code = $1', [deliveryNoteCode]);
       if (!deliveryNote || !deliveryNote.rows.length) {
-        throw new ResourceNotFoundError('No delivery trip found for this code');
+        throw new ResourceNotFoundError('No delivery note found for this code');
       }
 
       if (deliveryNote.rows[0].status != DELIVERY_NOTES_STATUS.DISPATCHED) {
@@ -212,6 +216,16 @@ export const DriverController = {
       }
 
       const deliveryNoteId = deliveryNote.rows[0].id;
+
+      let deliveryNoteStatus: string | null = null;
+
+      if (action.toLowerCase().trim() === 'cancel') {
+        deliveryNoteStatus = DELIVERY_NOTES_STATUS.CANCELED;
+      } else if (action.toLowerCase().trim() === 'confirm') {
+        deliveryNoteStatus = DELIVERY_NOTES_STATUS.DELIVERED;
+      } else {
+        throw new BadRequestError('action is either confirm or cancel');
+      }
 
       // update delivery note to delivered
       const deliveryNoteUpdateQuery = `
@@ -222,14 +236,14 @@ export const DriverController = {
         RETURNING *
         `;
 
-      const updatedDeliveryNote = await client.query(deliveryNoteUpdateQuery, [DELIVERY_NOTES_STATUS.DELIVERED, deliveryNoteId]);
+      const updatedDeliveryNote = await client.query(deliveryNoteUpdateQuery, [deliveryNoteStatus, deliveryNoteId]);
 
       const orderId = updatedDeliveryNote.rows[0].order_id;
       const deliveryTripId = updatedDeliveryNote.rows[0].delivery_trip_id;
 
       // check if the delivered meal is the last meal for an order and update order to completed
-      const notDeliveredMealsForOrderQuery = `SELECT * FROM delivery_notes WHERE order_id = $1 AND status <> $2`;
-      const notDeliveredMealsForOrderResult = await client.query(notDeliveredMealsForOrderQuery, [orderId, DELIVERY_NOTES_STATUS.DELIVERED]);
+      const notDeliveredMealsForOrderQuery = `SELECT * FROM delivery_notes WHERE order_id = $1 AND status = $2`;
+      const notDeliveredMealsForOrderResult = await client.query(notDeliveredMealsForOrderQuery, [orderId, DELIVERY_NOTES_STATUS.DISPATCHED]);
       if (!notDeliveredMealsForOrderResult.rows.length) {
         // means all meals in the order have been delivered
         const updateOrderQuery = `
@@ -243,8 +257,8 @@ export const DriverController = {
       }
 
       // check if all delivery notes in the trip have been delivered and update to "delivered"
-      const notDeliveredNotesForTripQuery = `SELECT * FROM delivery_notes WHERE delivery_trip_id = $1 AND status <> $2`;
-      const notDeliveredNotesForTripResult = await client.query(notDeliveredNotesForTripQuery, [deliveryTripId, DELIVERY_NOTES_STATUS.DELIVERED]);
+      const notDeliveredNotesForTripQuery = `SELECT * FROM delivery_notes WHERE delivery_trip_id = $1 AND status = $2`;
+      const notDeliveredNotesForTripResult = await client.query(notDeliveredNotesForTripQuery, [deliveryTripId, DELIVERY_NOTES_STATUS.DISPATCHED]);
       if (!notDeliveredNotesForTripResult.rows.length) {
         // means all delivery notes in the trip have been delivered
         const updateDeliveryTripQuery = `
@@ -254,11 +268,11 @@ export const DriverController = {
         WHERE id = $2
         RETURNING *
         `;
-        await client.query(updateDeliveryTripQuery, [DELIVERY_TRIPS_STATUS.DELIVERED, deliveryTripId]);
+        await client.query(updateDeliveryTripQuery, [DELIVERY_TRIPS_STATUS.COMPLETED, deliveryTripId]);
       }
 
       await client.query('COMMIT');
-      return respond(res, { message: 'Delivery note delivered', data: updatedDeliveryNote.rows[0] }, HttpStatus.OK);
+      return respond(res, { message: 'Delivery note updated', data: updatedDeliveryNote.rows[0] }, HttpStatus.OK);
     } catch (error) {
       await client.query('ROLLBACK');
       console.log({ error });

@@ -34,3 +34,4 @@ portalRouter.get('/admin/delivery-notes', authenticateAdmin(), DeliveryControlle
 portalRouter.get('/admin/drivers', authenticateAdmin(), DriverController.fetchDrivers());
 portalRouter.post('/admin/delivery-trips', authenticateAdmin(), DeliveryController.createDeliveryTrips());
 portalRouter.post('/admin/driver-trip-assignment', authenticateAdmin(), DeliveryController.assignDeliveryTripToDriver());
+portalRouter.get('/admin/users', authenticateAdmin(), UserController.fetchUsers())
