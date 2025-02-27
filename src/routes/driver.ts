@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { loginUserSchema } from '../validations/user';
 import { authenticate } from '../middleware/authenticate';
-import { DriverController } from '@src/controllers/driver';
-import { DeliveryController } from '@src/controllers/delivery';
+import { DriverController } from '../controllers/driver';
+import { DeliveryController } from '../controllers/delivery';
 
 export const driverRouter = Router();
 driverRouter.post('/drivers/login', loginUserSchema, DriverController.loginDriver());
