@@ -6,9 +6,9 @@ import { createParentItemSchema, createBundleSchema, createItemSchema } from '..
 import { UserController } from '../controllers/user';
 import { ItemController } from '../controllers/item';
 import { authenticateAdmin } from '../middleware/authenticate';
-import { DriverController } from '@src/controllers/driver';
-import { OrderController } from '@src/controllers/order';
-import { DeliveryController } from '@src/controllers/delivery';
+import { DriverController } from '../controllers/driver';
+import { OrderController } from '../controllers/order';
+import { DeliveryController } from '../controllers/delivery';
 
 export const portalRouter = Router();
 

@@ -1,12 +1,12 @@
-import { Driver } from '@src/interfaces';
-import { createDriver, findDriverByEmail, findDriverById, updateDriverPassword } from '../repository/user';
 import { RequestHandler } from 'express';
 import HttpStatus from 'http-status-codes';
+import { Driver } from '../interfaces';
+import { createDriver, findDriverByEmail, findDriverById, updateDriverPassword } from '../repository/user';
 import { BadRequestError, ConflictError, ResourceNotFoundError } from '../errors';
 import { JWT, comparePassword, generateRandomPassword, hashPassword, respond } from '../utilities';
 import { emailSender } from '../utilities/email.utility';
 import pool from '../config/database.config';
-import { DELIVERY_NOTES_STATUS, DELIVERY_TRIPS_STATUS, ORDER_STATUS } from '@src/constants';
+import { DELIVERY_NOTES_STATUS, DELIVERY_TRIPS_STATUS, ORDER_STATUS } from '../constants';
 
 export const DriverController = {
   createDriver: (): RequestHandler => async (req, res, next) => {

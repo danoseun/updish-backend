@@ -1,13 +1,13 @@
-import { Driver } from '@src/interfaces';
-import { findDriverById } from '../repository/user';
 import { RequestHandler } from 'express';
 import HttpStatus from 'http-status-codes';
+import { Driver } from '../interfaces';
+import { findDriverById } from '../repository/user';
 import { BadRequestError, ResourceNotFoundError } from '../errors';
 import { generateDeliveryTripCode, respond } from '../utilities';
 import pool from '../config/database.config';
 import { sql } from '../database/sql';
 import { createDeliveryNotes } from '../repository/order';
-import { DELIVERY_NOTES_STATUS, DELIVERY_TRIPS_STATUS } from '@src/constants';
+import { DELIVERY_NOTES_STATUS, DELIVERY_TRIPS_STATUS } from '../constants';
 
 export const DeliveryController = {
   createDeliveryNotes: (): RequestHandler => async (req, res, next) => {

@@ -1,7 +1,7 @@
 import axiosService from './axios';
 import variables from '../variables';
 import crypto from 'crypto';
-import { BadRequestError } from '@src/errors';
+import { BadRequestError } from '../errors';
 
 // export const callVerifyRaveTrx: any(trxRef: string) => {
 //     try {

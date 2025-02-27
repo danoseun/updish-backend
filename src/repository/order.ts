@@ -5,7 +5,7 @@ import { Order, User } from '../interfaces';
 import { findUserById } from './user';
 import pool from '../config/database.config';
 import format from 'pg-format';
-import { BadRequestError } from '@src/errors';
+import { BadRequestError } from '../errors';
 import { PoolClient } from 'pg';
 
 export const fetchPendingOrders = async (filters: Partial<Order>): Promise<Order[]> => {
