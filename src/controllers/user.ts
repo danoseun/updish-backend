@@ -675,6 +675,50 @@ export const UserController = {
       console.error('Error fetching addresses:', error);
       next(error);
     }
+  },
+
+  fetchUsers: (): RequestHandler => async (req, res, next) => {
+    try {
+      const { search, is_active } = req.query;
+
+      const searchTerm: string | null = search ? String(search) : null;
+
+      let activeFilter: boolean | null = null;
+
+      if (typeof is_active === 'string') {
+        if (is_active.toLowerCase() === 'true') {
+          activeFilter = true;
+        } else if (is_active.toLowerCase() === 'false') {
+          activeFilter = false;
+        }
+      }
+
+      const query = `
+        SELECT 
+          CONCAT(first_name, ' ', last_name) AS name,
+          email, 
+          phone_number, 
+          is_active 
+        FROM users
+        WHERE 
+          ($1::text IS NULL OR 
+            email ILIKE '%' || $1 || '%' OR
+            phone_number ILIKE '%' || $1 || '%' OR
+            first_name ILIKE '%' || $1 || '%' OR
+            last_name ILIKE '%' || $1 || '%')
+          AND ($2::boolean IS NULL OR is_active = $2::boolean)
+        ORDER BY created_at DESC;
+      `;
+
+      console.log({searchTerm, activeFilter})
+      const params = [searchTerm, activeFilter];
+      const { rows } = await pool.query(query, params);
+
+      return respond(res, { data: rows }, HttpStatus.OK);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      next(error);
+    }
   }
 };
 
